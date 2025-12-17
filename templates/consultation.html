@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>诊疗室 - {{ patient.name }}</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f5f7fa; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #409EFF; padding-bottom: 10px; color: #333; }
+
+        /* 病人信息条 */
+        .patient-info { background: #ecf5ff; padding: 15px; border-radius: 5px; color: #409EFF; margin-bottom: 20px; font-weight: bold; }
+
+        /* 表单样式 */
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
+        textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+
+        /* 药品表格 */
+        .med-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .med-table th { background: #f0f2f5; text-align: left; padding: 10px; }
+        .med-table td { padding: 8px; border-bottom: 1px solid #eee; }
+        .med-select { width: 100%; padding: 8px; }
+        .input-qty { width: 80px; padding: 8px; }
+
+        .btn-add { background: #67C23A; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
+        .btn-remove { background: #F56C6C; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
+
+        .btn-submit { width: 100%; padding: 15px; background: #409EFF; color: white; border: none; font-size: 18px; border-radius: 5px; cursor: pointer; margin-top: 30px; }
+        .btn-submit:hover { background: #66b1ff; }
+    </style>
+
+    <script>
+        // 简单的JS：点击按钮添加一行药品输入框
+        function addMedicineRow() {
+            var table = document.getElementById("medTableBody");
+            var row = table.insertRow(-1);
+
+            // 1. 药品选择下拉框
+            var cell1 = row.insertCell(0);
+            var selectHTML = '<select name="med_id[]" class="med-select" required>';
+            selectHTML += '<option value="">-- 请选择药品 --</option>';
+            // 这里利用后端传来的数据生成选项
+            {% for m in medicines %}
+            selectHTML += '<option value="{{ m.med_id }}">{{ m.med_name }} (￥{{ m.price }} | 库存:{{ m.stock }})</option>';
+            {% endfor %}
+            selectHTML += '</select>';
+            cell1.innerHTML = selectHTML;
+
+            // 2. 数量输入框
+            var cell2 = row.insertCell(1);
+            cell2.innerHTML = '<input type="number" name="quantity[]" class="input-qty" min="1" value="1" required>';
+
+            // 3. 用法输入框
+            var cell3 = row.insertCell(2);
+            cell3.innerHTML = '<input type="text" name="usage[]" placeholder="如：每日3次" class="med-select" required>';
+
+            // 4. 删除按钮
+            var cell4 = row.insertCell(3);
+            cell4.innerHTML = '<button type="button" class="btn-remove" onclick="removeRow(this)">删除</button>';
+        }
+
+        function removeRow(btn) {
+            var row = btn.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>🩺 诊疗室</h2>
+        <div>
+            <a href="/doctor_dashboard" style="margin-right:12px; color:#409eff;">工作台</a>
+            <a href="/registration/manage" style="margin-right:12px; color:#409eff;">挂号管理</a>
+            <a href="/pharmacy" style="margin-right:12px; color:#409eff;">药房管理</a>
+            <a href="/cashier" style="margin-right:12px; color:#409eff;">收银台</a>
+            <a href="/logout" style="color:#f56c6c;">退出</a>
+        </div>
+    </div>
+
+    <div class="patient-info">
+        当前患者：{{ patient.name }} | 性别：{{ patient.gender }} | 年龄：{{ patient.age }}岁
+        {% if patient.allergy %}
+        <span style="color:red; margin-left:20px;">⚠️ 过敏史：{{ patient.allergy }}</span>
+        {% endif %}
+    </div>
+
+    <form method="POST" action="/submit_consultation">
+        <input type="hidden" name="reg_id" value="{{ patient.reg_id }}">
+
+        <div class="form-group">
+            <label>1. 患者主诉 (Main Complaint)</label>
+            <textarea name="main_complaint" placeholder="患者哪里不舒服？持续了多久？" required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>2. 诊断结果 (Diagnosis)</label>
+            <textarea name="diagnosis" placeholder="初步诊断结论" required></textarea>
+        </div>
+
+        <div class="form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="margin:0;">3. 开具处方 (Prescription)</label>
+                <button type="button" class="btn-add" onclick="addMedicineRow()">+ 添加药品</button>
+            </div>
+
+            <table class="med-table">
+                <thead>
+                    <tr>
+                        <th width="40%">药品名称</th>
+                        <th width="15%">数量</th>
+                        <th width="30%">用法用量</th>
+                        <th width="15%">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="medTableBody">
+                    <tr>
+                        <td>
+                            <select name="med_id[]" class="med-select" required>
+                                <option value="">-- 请选择药品 --</option>
+                                {% for m in medicines %}
+                                <option value="{{ m.med_id }}">{{ m.med_name }} (￥{{ m.price }} | 库存:{{ m.stock }})</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="number" name="quantity[]" class="input-qty" min="1" value="1" required></td>
+                        <td><input type="text" name="usage[]" placeholder="如：每日3次" class="med-select" required></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <button type="submit" class="btn-submit">✅ 完成诊疗 (提交病历与处方)</button>
+    </form>
+</div>
+
+</body>
+</html>

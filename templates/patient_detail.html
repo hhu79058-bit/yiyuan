@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>患者详情</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background:#f5f7fa; margin:0; padding:20px; }
+        .layout { max-width: 1000px; margin:0 auto; }
+        .card { background:#fff; border-radius:10px; padding:18px; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:16px; }
+        h2 { margin:0 0 10px; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
+        th { background:#f2f6fc; }
+        .tag { padding:4px 8px; border-radius:4px; font-size:12px; color:#fff; }
+        .tag-wait { background:#e6a23c; }
+        .tag-ing { background:#409eff; }
+        .tag-done { background:#67c23a; }
+        .tag-cancel { background:#909399; }
+        a { color:#409eff; text-decoration:none; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h2>患者详情</h2>
+            {% if patient %}
+                <p>{{ patient.name }} | 性别：{{ patient.gender }} | 年龄：{{ patient.age }} | 病历号：{{ patient.medical_record_no }}</p>
+                <p>手机号：{{ patient.phone }} {% if patient.allergy %}| 过敏史：{{ patient.allergy }}{% endif %}</p>
+            {% endif %}
+        </div>
+        <div>
+            <a href="/patients" style="margin-right:12px;">返回列表</a>
+            <a href="/registration/manage" style="margin-right:12px;">挂号管理</a>
+            <a href="/cashier" style="margin-right:12px;">收银台</a>
+            <a href="/logout" style="color:#f56c6c;">退出</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>就诊/挂号记录</h3>
+        <table>
+            <thead><tr><th>时间</th><th>预约日/班次</th><th>排队号</th><th>状态</th><th>医生/科室</th><th>挂号费</th></tr></thead>
+            <tbody>
+            {% for r in regs %}
+                <tr>
+                    <td>{{ r.reg_time }}</td>
+                    <td>{{ r.visit_date }} {{ r.shift }}</td>
+                    <td>{{ r.queue_num }}</td>
+                    <td>
+                        {% if r.visit_status == '未就诊' %}<span class="tag tag-wait">未就诊</span>
+                        {% elif r.visit_status == '就诊中' %}<span class="tag tag-ing">就诊中</span>
+                        {% elif r.visit_status == '已就诊' %}<span class="tag tag-done">已就诊</span>
+                        {% else %}<span class="tag tag-cancel">已取消</span>{% endif %}
+                    </td>
+                    <td>{{ r.doctor_name }} / {{ r.dept_name }}</td>
+                    <td>￥{{ r.reg_fee }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>电子病历记录</h3>
+        <table>
+            <thead><tr><th>时间</th><th>医生</th><th>主诉</th><th>诊断</th></tr></thead>
+            <tbody>
+            {% for m in med_records %}
+                <tr>
+                    <td>{{ m.create_time }}</td>
+                    <td>{{ m.doctor_name }}</td>
+                    <td>{{ m.main_complaint }}</td>
+                    <td>{{ m.diagnosis }}</td>
+                </tr>
+            {% endfor %}
+            {% if not med_records %}
+                <tr><td colspan="4" style="color:#999;">暂无病历记录</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

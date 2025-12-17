@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>诊疗通 - 统一登录</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 380px;
+        }
+        h2 { text-align: center; color: #333; margin-bottom: 30px; }
+
+        /* 角色选择开关 */
+        .role-switch {
+            display: flex;
+            background: #f0f2f5;
+            border-radius: 25px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        .role-switch input { display: none; }
+        .role-switch label {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #666;
+            font-weight: 500;
+        }
+        /* 选中状态的样式 */
+        .role-switch input:checked + label {
+            background: #409EFF;
+            color: white;
+            border-radius: 25px;
+            box-shadow: 0 2px 8px rgba(64, 158, 255, 0.4);
+        }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #555; font-size: 14px; }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border 0.3s;
+        }
+        .form-group input:focus { border-color: #409EFF; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background-color: #409EFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .btn-submit:hover { background-color: #66b1ff; }
+        .error-msg { color: #f56c6c; text-align: center; margin-bottom: 15px; font-size: 14px; background: #fef0f0; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h2>诊疗通挂号系统</h2>
+
+    {% if error %}
+        <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+        <div class="role-switch">
+            <input type="radio" id="role_patient" name="role" value="patient" checked>
+            <label for="role_patient">我是患者</label>
+
+            <input type="radio" id="role_doctor" name="role" value="doctor">
+            <label for="role_doctor">我是医生</label>
+        </div>
+
+        <div class="form-group">
+            <label>手机号码</label>
+            <input type="text" name="phone" placeholder="请输入注册手机号" required>
+        </div>
+
+        <div class="form-group">
+            <label>登录密码</label>
+            <input type="password" name="password" placeholder="请输入密码" required>
+        </div>
+
+        <button type="submit" class="btn-submit">立即登录</button>
+    </form>
+</div>
+
+</body>
+</html>

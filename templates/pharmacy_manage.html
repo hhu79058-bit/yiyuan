@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>药房管理</title>
+    <style>
+        body { font-family:'Segoe UI',sans-serif; background:#f5f7fa; margin:0; padding:20px; }
+        .layout { max-width: 1000px; margin:0 auto; }
+        .card { background:#fff; border-radius:10px; padding:18px; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:16px; }
+        h1 { margin:0 0 10px; }
+        label { display:block; font-weight:600; color:#444; margin:8px 0 4px; }
+        input { width:100%; padding:8px 10px; border:1px solid #dcdfe6; border-radius:6px; box-sizing:border-box; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
+        th { background:#f2f6fc; }
+        .btn { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+        .btn-primary { background:#409eff; color:#fff; }
+        .btn-danger { background:#f56c6c; color:#fff; }
+        .flash { padding:10px; border-radius:6px; margin-bottom:8px; }
+        .flash-success { background:#f0f9eb; color:#67c23a; }
+        .flash-error { background:#fef0f0; color:#f56c6c; }
+        .flash-info { background:#ecf5ff; color:#409eff; }
+        a { color:#409eff; text-decoration:none; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h1>药房管理</h1>
+            <p style="color:#666;">S1 药品信息管理：进货、补货、调价、下架</p>
+        </div>
+        <div>
+            <a href="/registration/manage" style="margin-right:12px;">挂号管理</a>
+            <a href="/doctor_dashboard" style="margin-right:12px;">医生端</a>
+            <a href="/patients" style="margin-right:12px;">患者档案</a>
+            <a href="/cashier" style="margin-right:12px;">收银台</a>
+            <a href="/logout" style="color:#f56c6c;">退出</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat, msg in messages %}
+                <div class="flash flash-{{cat}}">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <h3>新增药品（进货）</h3>
+        <form method="POST" action="/pharmacy/add" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div style="flex:2; min-width:200px;">
+                <label>药品名称</label>
+                <input name="med_name" required placeholder="请输入药品名称">
+            </div>
+            <div style="flex:1; min-width:120px;">
+                <label>单价</label>
+                <input name="price" type="number" step="0.01" min="0" required>
+            </div>
+            <div style="flex:1; min-width:120px;">
+                <label>库存</label>
+                <input name="stock" type="number" min="0" required>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn btn-primary" type="submit">添加</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>药品列表（补货/调价/下架）</h3>
+        <table>
+            <thead>
+            <tr><th>ID</th><th>名称</th><th>单价</th><th>库存</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+            {% for m in medicines %}
+                <tr>
+                    <form method="POST" action="/pharmacy/update">
+                        <td>{{ m.med_id }}<input type="hidden" name="med_id" value="{{ m.med_id }}"></td>
+                        <td>{{ m.med_name }}</td>
+                        <td><input type="number" step="0.01" min="0" name="price" value="{{ m.price }}"></td>
+                        <td><input type="number" min="0" name="stock" value="{{ m.stock }}"></td>
+                        <td style="white-space:nowrap;">
+                            <button class="btn btn-primary" type="submit" style="padding:6px 10px;">保存</button>
+                            <a class="btn btn-danger" style="padding:6px 10px;" href="/pharmacy/delete/{{ m.med_id }}" onclick="return confirm('确认下架该药品？');">下架</a>
+                        </td>
+                    </form>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

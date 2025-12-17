@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的支付</title>
+    <style>
+        body { font-family:'Segoe UI',sans-serif; background:#f5f7fa; margin:0; padding:20px; }
+        .layout { max-width: 1000px; margin:0 auto; }
+        .card { background:#fff; border-radius:10px; padding:18px; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:16px; }
+        h2 { margin:0 0 10px; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
+        th { background:#f2f6fc; }
+        .btn { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+        .btn-primary { background:#409eff; color:#fff; }
+        .tag { padding:4px 8px; border-radius:4px; font-size:12px; color:#fff; }
+        .tag-paid { background:#67c23a; }
+        .tag-unpaid { background:#e6a23c; }
+        .flash { padding:10px; border-radius:6px; margin-bottom:8px; }
+        .flash-success { background:#f0f9eb; color:#67c23a; }
+        .flash-error { background:#fef0f0; color:#f56c6c; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h2>我的支付</h2>
+            <p style="color:#666;">查看费用明细并完成自助支付</p>
+        </div>
+        <div>
+            <a href="/patient_home" style="margin-right:12px; color:#409eff;">返回首页</a>
+            <a href="/logout" style="color:#f56c6c;">退出</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat, msg in messages %}
+                <div class="flash flash-{{cat}}">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <table>
+            <thead>
+            <tr><th>时间</th><th>医生</th><th>预约日/班次</th><th>挂号费</th><th>检查费</th><th>药费</th><th>合计</th><th>支付状态</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+            {% for r in rows %}
+                <tr>
+                    <td>{{ r.reg_time }}</td>
+                    <td>{{ r.doctor_name }}</td>
+                    <td>{{ r.visit_date }} {{ r.shift }}</td>
+                    <td>￥{{ '%.2f' % r.reg_fee }}</td>
+                    <td>￥{{ '%.2f' % r.check_fee }}</td>
+                    <td>￥{{ '%.2f' % r.med_fee }}</td>
+                    <td style="font-weight:bold;">￥{{ '%.2f' % r.total_fee }}</td>
+                    <td>
+                        {% if r.fee_status == '已支付' %}
+                            <span class="tag tag-paid">已支付</span>
+                        {% else %}
+                            <span class="tag tag-unpaid">未支付</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.fee_status != '已支付' %}
+                            <form method="POST" action="/patient/pay/{{ r.reg_id }}" style="margin:0;">
+                                <button class="btn btn-primary" type="submit" onclick="return confirm('确认支付该笔费用？');">立即支付</button>
+                            </form>
+                        {% else %}
+                            <span style="color:#999;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

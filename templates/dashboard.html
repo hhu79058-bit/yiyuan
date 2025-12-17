@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>医生工作台</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f5f7fa; }
+        .header { background: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #409EFF; color: white; }
+        tr:hover { background-color: #f9f9f9; }
+
+        .btn-start { background-color: #67C23A; color: white; padding: 6px 12px; text-decoration: none; border-radius: 4px; font-size: 14px; cursor: pointer; border: none;}
+        .status-processing { color: #67C23A; font-weight: bold; }
+        .status-waiting { color: #E6A23C; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👨‍⚕️ {{ doctor_name }}的工作台</h1>
+        <div>
+            <a href="/registration/manage" style="margin-right:12px; color:#409eff; text-decoration:none;">挂号管理</a>
+            <a href="/pharmacy" style="margin-right:12px; color:#409eff; text-decoration:none;">药房管理</a>
+            <a href="/cashier" style="margin-right:12px; color:#409eff; text-decoration:none;">收银台</a>
+            <a href="/logout" style="color: red; text-decoration: none;">退出登录</a>
+        </div>
+    </div>
+
+    <h3>📋 实时候诊列表</h3>
+
+    {% if patients %}
+    <table>
+        <thead>
+            <tr>
+                <th>排队号</th>
+                <th>姓名</th>
+                <th>性别</th>
+                <th>年龄</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in patients %}
+            <tr style="background-color: {{ '#f0f9eb' if p.visit_status == '就诊中' else 'white' }}">
+                <td><strong style="font-size:1.2em;">{{ p.queue_num }}</strong></td>
+                <td>{{ p.patient_name }}</td>
+                <td>{{ p.gender }}</td>
+                <td>{{ p.age }}岁</td>
+                <td>
+                    {% if p.visit_status == '就诊中' %}
+                        <span class="status-processing">正在就诊...</span>
+                    {% else %}
+                        <span class="status-waiting">等待中</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if p.visit_status == '未就诊' %}
+                        <a href="/start_consult/{{ p.reg_id }}" class="btn-start">接诊</a>
+                    {% else %}
+                        <button disabled style="color:#999; border:none; background:none;">接诊中</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div style="text-align:center; padding:50px; color:#999;">
+            <h3>当前没有待诊患者</h3>
+            <p>您可以休息一下，喝杯咖啡 ☕</p>
+        </div>
+    {% endif %}
+</body>
+</html>
