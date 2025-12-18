@@ -10,6 +10,8 @@ payment_bp = Blueprint('cashier', __name__)
 def cashier_page():
     if not require_login():
         return redirect(url_for('auth.login'))
+    if session.get('role') == 'patient':
+        return redirect(url_for('cashier.patient_payments'))
 
     selected_date = request.args.get('date') or date.today().isoformat()
     status_filter = request.args.get('status', 'all')
@@ -62,6 +64,9 @@ def cashier_page():
 def cashier_pay(reg_id):
     if not require_login():
         return redirect(url_for('auth.login'))
+    if session.get('role') == 'patient':
+        flash("患者不可操作收银台", 'error')
+        return redirect(url_for('cashier.patient_payments'))
 
     conn = get_db_connection()
     try:

@@ -1,13 +1,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from db import get_db_connection, generate_medical_record_no, table_exists
-from utils import require_login
+from utils import require_login, require_doctor
 
 patients_bp = Blueprint('patients', __name__)
 
 
 @patients_bp.route('/patients')
 def patient_manage():
-    if not require_login():
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     keyword = request.args.get('q', '').strip()
@@ -39,7 +39,7 @@ def patient_manage():
 
 @patients_bp.route('/patients/create', methods=['POST'])
 def patient_create():
-    if not require_login():
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     name = request.form.get('name')
@@ -76,7 +76,7 @@ def patient_create():
 
 @patients_bp.route('/patients/update', methods=['POST'])
 def patient_update():
-    if not require_login():
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     patient_id = request.form.get('patient_id')
@@ -117,7 +117,7 @@ def patient_update():
 
 @patients_bp.route('/patients/<int:patient_id>')
 def patient_detail(patient_id):
-    if not require_login():
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     conn = get_db_connection()

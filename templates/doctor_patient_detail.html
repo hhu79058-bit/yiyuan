@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}患者详情 - 诊疗通{% endblock %}
+{% block title %}患者快览 - 诊疗通{% endblock %}
 
 {% block content %}
     <div class="card">
         <div class="page-title">
             <div>
-                <h2>患者详情</h2>
+                <h2>患者快览</h2>
                 {% if patient %}
                     <div class="subtitle">
                         {{ patient.name }} ｜ {{ patient.gender }} ｜ {{ patient.age }}岁 ｜ 病历号：<span class="mono">{{ patient.medical_record_no|default('—', true) }}</span>
@@ -13,10 +13,11 @@
                     <div class="muted" style="margin-top:6px;">
                         手机号：{{ patient.phone }}
                         {% if patient.allergy %}｜ <span style="color:var(--danger); font-weight:900;">过敏史：{{ patient.allergy }}</span>{% endif %}
+                        {% if patient.past_illness %}｜ <span style="color:var(--warning); font-weight:900;">既往病史：{{ patient.past_illness }}</span>{% endif %}
                     </div>
                 {% endif %}
             </div>
-            <a class="btn btn--ghost" href="{{ url_for('patients.patient_manage') }}">返回列表</a>
+            <a class="btn btn--ghost" href="{{ url_for('doctor.dashboard') }}">返回工作台</a>
         </div>
     </div>
 
@@ -24,13 +25,13 @@
         <div class="card">
             <div class="page-title">
                 <div>
-                    <h2>挂号/就诊记录</h2>
-                    <div class="subtitle">最近记录</div>
+                    <h2>历史挂号/就诊</h2>
+                    <div class="subtitle">最近50条</div>
                 </div>
             </div>
             <div class="table-wrap">
                 <table class="table">
-                    <thead><tr><th>时间</th><th>预约日/班次</th><th>排队号</th><th>状态</th><th>医生/科室</th><th>挂号费</th></tr></thead>
+                    <thead><tr><th>时间</th><th>预约日/班次</th><th>排队号</th><th>状态</th><th>医生/科室</th></tr></thead>
                     <tbody>
                     {% for r in regs %}
                         <tr>
@@ -44,11 +45,10 @@
                                 {% else %}<span class="badge badge--muted">已取消</span>{% endif %}
                             </td>
                             <td>{{ r.doctor_name }} / {{ r.dept_name }}</td>
-                            <td>￥{{ r.reg_fee }}</td>
                         </tr>
                     {% endfor %}
                     {% if not regs %}
-                        <tr><td colspan="6" class="muted">暂无记录</td></tr>
+                        <tr><td colspan="5" class="muted">暂无历史记录</td></tr>
                     {% endif %}
                     </tbody>
                 </table>
@@ -58,8 +58,8 @@
         <div class="card">
             <div class="page-title">
                 <div>
-                    <h2>电子病历记录</h2>
-                    <div class="subtitle">主诉与诊断</div>
+                    <h2>历史病历</h2>
+                    <div class="subtitle">最近50条</div>
                 </div>
             </div>
             <div class="table-wrap">

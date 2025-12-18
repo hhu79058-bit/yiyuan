@@ -1,113 +1,62 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <title>诊疗通 - 统一登录</title>
+{% extends "base.html" %}
+{% block title %}统一登录 - 诊疗通{% endblock %}
+
+{% block extra_head %}
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
+            background:
+                radial-gradient(900px 450px at 20% 20%, rgba(47,125,246,.16), transparent 55%),
+                radial-gradient(900px 450px at 80% 25%, rgba(245,158,11,.10), transparent 55%),
+                linear-gradient(180deg, rgba(246,248,252,.92), rgba(246,248,252,.92)),
+                url("{{ url_for('static', filename='login-bg.svg') }}") center/cover no-repeat fixed;
         }
-        .login-card {
-            background: white;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 380px;
-        }
-        h2 { text-align: center; color: #333; margin-bottom: 30px; }
-
-        /* 角色选择开关 */
-        .role-switch {
-            display: flex;
-            background: #f0f2f5;
-            border-radius: 25px;
-            margin-bottom: 25px;
-            overflow: hidden;
-        }
-        .role-switch input { display: none; }
-        .role-switch label {
-            flex: 1;
-            text-align: center;
-            padding: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: #666;
-            font-weight: 500;
-        }
-        /* 选中状态的样式 */
-        .role-switch input:checked + label {
-            background: #409EFF;
-            color: white;
-            border-radius: 25px;
-            box-shadow: 0 2px 8px rgba(64, 158, 255, 0.4);
-        }
-
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; color: #555; font-size: 14px; }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            outline: none;
-            transition: border 0.3s;
-        }
-        .form-group input:focus { border-color: #409EFF; }
-
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
-            background-color: #409EFF;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-        .btn-submit:hover { background-color: #66b1ff; }
-        .error-msg { color: #f56c6c; text-align: center; margin-bottom: 15px; font-size: 14px; background: #fef0f0; padding: 10px; border-radius: 4px; }
+        .login-shell{max-width:420px;margin:0 auto;padding:40px 0}
+        .login-card{padding:22px}
+        .role-switch{display:flex;background:#f3f4f6;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+        .role-switch input{display:none}
+        .role-switch label{flex:1;text-align:center;padding:10px 12px;cursor:pointer;color:#6b7280;font-weight:800}
+        .role-switch input:checked + label{background:#eaf2ff;color:var(--primary)}
+        .login-actions{margin-top:14px}
+        .hint{font-size:12px;color:var(--muted);margin-top:10px}
     </style>
-</head>
-<body>
+{% endblock %}
 
-<div class="login-card">
-    <h2>诊疗通挂号系统</h2>
+{% block content %}
+    <div class="login-shell">
+        <div class="card login-card">
+            <div class="page-title" style="margin-bottom:4px;">
+                <div>
+                    <h2 style="margin:0;">统一登录</h2>
+                    <div class="subtitle">诊疗通门诊系统</div>
+                </div>
+            </div>
 
-    {% if error %}
-        <div class="error-msg">{{ error }}</div>
-    {% endif %}
+            {% if error %}
+                <div class="flash flash--error">{{ error }}</div>
+            {% endif %}
 
-    <form method="POST" action="/login">
-        <div class="role-switch">
-            <input type="radio" id="role_patient" name="role" value="patient" checked>
-            <label for="role_patient">我是患者</label>
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                <label>选择身份</label>
+                <div class="role-switch">
+                    <input type="radio" id="role_patient" name="role" value="patient" checked>
+                    <label for="role_patient">患者</label>
 
-            <input type="radio" id="role_doctor" name="role" value="doctor">
-            <label for="role_doctor">我是医生</label>
+                    <input type="radio" id="role_doctor" name="role" value="doctor">
+                    <label for="role_doctor">医生</label>
+                </div>
+
+                <label>手机号码</label>
+                <input type="text" name="phone" placeholder="请输入注册手机号" required>
+
+                <label>登录密码</label>
+                <input type="password" name="password" placeholder="请输入密码" required>
+
+                <div class="login-actions">
+                    <button type="submit" class="btn btn--primary" style="width:100%;">登录</button>
+                </div>
+
+                <div class="hint"><span class="mono"></span></div>
+            </form>
         </div>
-
-        <div class="form-group">
-            <label>手机号码</label>
-            <input type="text" name="phone" placeholder="请输入注册手机号" required>
-        </div>
-
-        <div class="form-group">
-            <label>登录密码</label>
-            <input type="password" name="password" placeholder="请输入密码" required>
-        </div>
-
-        <button type="submit" class="btn-submit">立即登录</button>
-    </form>
-</div>
-
-</body>
-</html>
+    </div>
+{% endblock %}

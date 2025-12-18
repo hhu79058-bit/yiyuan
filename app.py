@@ -6,6 +6,7 @@ from doctor_routes import doctor_bp
 from patient_routes import patients_bp
 from pharmacy_routes import pharmacy_bp
 from payment_routes import payment_bp
+from stats_routes import stats_bp
 
 app = Flask(__name__)
 app.secret_key = 'clinic_secret_key_2025'
@@ -17,6 +18,7 @@ app.register_blueprint(doctor_bp)
 app.register_blueprint(patients_bp)
 app.register_blueprint(pharmacy_bp)
 app.register_blueprint(payment_bp)
+app.register_blueprint(stats_bp)
 
 
 @app.route('/')

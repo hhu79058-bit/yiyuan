@@ -83,7 +83,8 @@ def book_appointment(doctor_id):
 
 @reg_bp.route('/registration/manage')
 def registration_manage():
-    if not require_login():
+    from utils import require_doctor
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     selected_date = request.args.get('date') or date.today().isoformat()
@@ -162,7 +163,8 @@ def registration_manage():
 
 @reg_bp.route('/registration/new', methods=['POST'])
 def registration_new_patient():
-    if not require_login():
+    from utils import require_doctor
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     name = request.form.get('name')
@@ -197,7 +199,8 @@ def registration_new_patient():
 
 @reg_bp.route('/registration/quick', methods=['POST'])
 def registration_quick():
-    if not require_login():
+    from utils import require_doctor
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     keyword = request.form.get('keyword')
@@ -233,7 +236,8 @@ def registration_quick():
 
 @reg_bp.route('/registration/cancel/<int:reg_id>')
 def registration_cancel(reg_id):
-    if not require_login():
+    from utils import require_doctor
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     visit_date = None
@@ -263,7 +267,8 @@ def registration_cancel(reg_id):
 
 @reg_bp.route('/registration/restore/<int:reg_id>')
 def registration_restore(reg_id):
-    if not require_login():
+    from utils import require_doctor
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     visit_date = None
@@ -293,7 +298,8 @@ def registration_restore(reg_id):
 
 @reg_bp.route('/schedule/save', methods=['POST'])
 def schedule_save():
-    if not require_login():
+    from utils import require_doctor
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     doctor_id = request.form.get('doctor_id')
@@ -322,7 +328,8 @@ def schedule_save():
 
 @reg_bp.route('/schedule/status/<int:schedule_id>/<string:new_status>')
 def schedule_status(schedule_id, new_status):
-    if not require_login():
+    from utils import require_doctor
+    if not require_doctor():
         return redirect(url_for('auth.login'))
 
     conn = get_db_connection()

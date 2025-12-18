@@ -1,107 +1,87 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <title>收银台</title>
-    <style>
-        body { font-family:'Segoe UI',sans-serif; background:#f5f7fa; margin:0; padding:20px; }
-        .layout { max-width: 1100px; margin:0 auto; }
-        .card { background:#fff; border-radius:10px; padding:18px; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:16px; }
-        h1 { margin:0 0 10px; }
-        table { width:100%; border-collapse:collapse; }
-        th, td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
-        th { background:#f2f6fc; }
-        .btn { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
-        .btn-primary { background:#409eff; color:#fff; }
-        .btn-plain { background:#ebeef5; color:#606266; }
-        .flash { padding:10px; border-radius:6px; margin-bottom:8px; }
-        .flash-success { background:#f0f9eb; color:#67c23a; }
-        .flash-error { background:#fef0f0; color:#f56c6c; }
-        .flash-info { background:#ecf5ff; color:#409eff; }
-        .tag { padding:4px 8px; border-radius:4px; font-size:12px; color:#fff; }
-        .tag-paid { background:#67c23a; }
-        .tag-unpaid { background:#e6a23c; }
-        a { color:#409eff; text-decoration:none; }
-    </style>
-</head>
-<body>
-<div class="layout">
-    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-            <h1>收银台</h1>
-            <p style="color:#666;">挂号费 + 检查费 + 药费 明细，支付状态变更</p>
-        </div>
-        <div>
-            <a href="/registration/manage" style="margin-right:12px;">挂号管理</a>
-            <a href="/pharmacy" style="margin-right:12px;">药房管理</a>
-            <a href="/patients" style="margin-right:12px;">患者档案</a>
-            <a href="/doctor_dashboard" style="margin-right:12px;">医生端</a>
-            <a href="/logout" style="color:#f56c6c;">退出</a>
-        </div>
-    </div>
+{% extends "base.html" %}
+{% block title %}收银台 - 诊疗通{% endblock %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for cat, msg in messages %}
-                <div class="flash flash-{{cat}}">{{ msg }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <div class="card" style="display:flex; gap:12px; align-items:center;">
-        <form method="GET" action="/cashier" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <label style="margin:0;">日期</label>
-            <input type="date" name="date" value="{{ selected_date }}">
-            <label style="margin:0;">状态</label>
-            <select name="status">
-                <option value="all" {% if status_filter=='all' %}selected{% endif %}>全部</option>
-                <option value="unpaid" {% if status_filter=='unpaid' %}selected{% endif %}>未支付</option>
-                <option value="paid" {% if status_filter=='paid' %}selected{% endif %}>已支付</option>
-            </select>
-            <button class="btn btn-primary" type="submit">筛选</button>
-        </form>
-        <div style="margin-left:auto; color:#409eff;">
-            合计：{{ totals.count }} 笔，金额 ￥{{ '%.2f' % totals.amount }}
+{% block content %}
+    <div class="card">
+        <div class="page-title">
+            <div>
+                <h2>收银台</h2>
+                <div class="subtitle">展示费用明细并变更支付状态（医生端）</div>
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <table>
-            <thead>
-            <tr><th>患者</th><th>病历号</th><th>医生</th><th>日期/班次</th><th>挂号费</th><th>检查费</th><th>药费</th><th>应付合计</th><th>状态</th><th>操作</th></tr>
-            </thead>
-            <tbody>
-            {% for r in rows %}
-                <tr>
-                    <td>{{ r.patient_name }}</td>
-                    <td>{{ r.medical_record_no }}</td>
-                    <td>{{ r.doctor_name }}</td>
-                    <td>{{ r.visit_date }} {{ r.shift }}</td>
-                    <td>￥{{ '%.2f' % r.reg_fee }}</td>
-                    <td>￥{{ '%.2f' % r.check_fee }}</td>
-                    <td>￥{{ '%.2f' % r.med_fee }}</td>
-                    <td style="font-weight:bold;">￥{{ '%.2f' % r.total_fee }}</td>
-                    <td>
-                        {% if r.fee_status == '已支付' %}
-                            <span class="tag tag-paid">已支付</span>
-                        {% else %}
-                            <span class="tag tag-unpaid">未支付</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if r.fee_status != '已支付' %}
-                            <form method="POST" action="/cashier/pay/{{ r.reg_id }}" style="margin:0;">
-                                <button class="btn btn-primary" type="submit" onclick="return confirm('确认已收款？');">标记已支付</button>
-                            </form>
-                        {% else %}
-                            <span style="color:#999;">—</span>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <form method="GET" action="{{ url_for('cashier.cashier_page') }}" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <span class="muted">日期</span>
+                <input type="date" name="date" value="{{ selected_date }}">
+                <span class="muted">状态</span>
+                <select name="status">
+                    <option value="all" {% if status_filter=='all' %}selected{% endif %}>全部</option>
+                    <option value="unpaid" {% if status_filter=='unpaid' %}selected{% endif %}>未支付</option>
+                    <option value="paid" {% if status_filter=='paid' %}selected{% endif %}>已支付</option>
+                </select>
+                <button class="btn btn--ghost btn--sm" type="submit">筛选</button>
+            </form>
+            <div style="margin-left:auto;">
+                <span class="badge badge--info">合计 {{ totals.count }} 笔</span>
+                <span class="badge badge--success" style="margin-left:8px;">￥{{ '%.2f' % totals.amount }}</span>
+            </div>
+        </div>
     </div>
-</div>
-</body>
-</html>
+
+    <div class="card">
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>患者</th>
+                    <th>病历号</th>
+                    <th>医生</th>
+                    <th>日期/班次</th>
+                    <th>挂号费</th>
+                    <th>检查费</th>
+                    <th>药费</th>
+                    <th>应付合计</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in rows %}
+                    <tr>
+                        <td>{{ r.patient_name }}</td>
+                        <td class="mono">{{ r.medical_record_no|default('—', true) }}</td>
+                        <td>{{ r.doctor_name }}</td>
+                        <td>{{ r.visit_date|default('—', true) }} {{ r.shift|default('—', true) }}</td>
+                        <td>￥{{ '%.2f' % r.reg_fee }}</td>
+                        <td>￥{{ '%.2f' % r.check_fee }}</td>
+                        <td>￥{{ '%.2f' % r.med_fee }}</td>
+                        <td style="font-weight:900;">￥{{ '%.2f' % r.total_fee }}</td>
+                        <td>
+                            {% if r.fee_status == '已支付' %}
+                                <span class="badge badge--success">已支付</span>
+                            {% else %}
+                                <span class="badge badge--warning">未支付</span>
+                            {% endif %}
+                        </td>
+                        <td style="white-space:nowrap;">
+                            {% if r.fee_status != '已支付' %}
+                                <form method="POST" action="{{ url_for('cashier.cashier_pay', reg_id=r.reg_id) }}" style="margin:0;">
+                                    <button class="btn btn--primary btn--sm" type="submit" onclick="return confirm('确认已收款？');">标记已支付</button>
+                                </form>
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                {% if not rows %}
+                    <tr><td colspan="10" class="muted">暂无数据</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

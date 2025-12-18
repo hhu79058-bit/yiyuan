@@ -1,55 +1,66 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>患者自助服务中心</title>
+{% extends "base.html" %}
+{% block title %}患者中心 - 诊疗通{% endblock %}
+
+{% block extra_head %}
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f0f2f5; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2 { color: #333; border-bottom: 2px solid #409EFF; padding-bottom: 10px; }
-        
-        /* 医生列表样式 */
-        .doctor-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
-        .doctor-info h4 { margin: 0; color: #333; }
-        .doctor-info p { margin: 5px 0 0; color: #666; font-size: 14px; }
-        .btn-book { background-color: #409EFF; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; text-decoration: none;}
-        .btn-book:hover { background-color: #66b1ff; }
-
-        /* 状态标签 */
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-        .status-未就诊 { background: #e6a23c; color: white; }
-        .status-就诊中 { background: #67c23a; color: white; }
-        .status-已就诊 { background: #909399; color: white; }
-        .status-已取消 { background: #c0c4cc; color: white; }
+        .doctor-list{display:grid;gap:10px}
+        .doctor-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+        .doctor-item:hover{border-color:rgba(47,125,246,.35);box-shadow:0 10px 30px rgba(47,125,246,.08)}
+        .doctor-name{font-weight:900}
+        .doctor-meta{color:var(--muted);font-size:13px;margin-top:6px}
+        .queue{font-weight:900}
     </style>
-</head>
-<body>
-<div class="container">
-    <div style="display:flex; justify-content:space-between;">
-        <h1>欢迎您，{{ patient_name }}</h1>
-        <div style="margin-top:30px;">
-            <a href="/patient/profile" style="margin-right:12px; text-decoration:none; color:#409eff;">我的档案</a>
-            <a href="/logout" style="color:red; text-decoration:none;">退出登录</a>
-        </div>
-    </div>
+{% endblock %}
 
+{% block content %}
     <div class="card">
-        <h2>预约挂号</h2>
-        {% for doc in doctors %}
-        <div class="doctor-item">
-            <div class="doctor-info">
-                <h4>{{ doc.name }} <small>({{ doc.title }})</small></h4>
-                <p>科室：{{ doc.dept_name }} | 挂号费：￥{{ doc.reg_fee }}</p>
+        <div class="page-title">
+            <div>
+                <h2>欢迎，{{ patient_name }}</h2>
+                <div class="subtitle">预约挂号、查看排队与费用</div>
             </div>
-            <a href="/book_appointment/{{ doc.doctor_id }}" class="btn-book" onclick="return confirm('确定要挂 {{doc.name}} 的号吗？')">立即挂号</a>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a class="btn btn--ghost" href="{{ url_for('patients.patient_profile') }}">我的档案</a>
+                <a class="btn btn--primary" href="{{ url_for('cashier.patient_payments') }}">收银台</a>
+            </div>
         </div>
-        {% endfor %}
     </div>
 
     <div class="card">
-        <h2>我的挂号记录</h2>
-        <table width="100%" style="text-align:left;">
-            <thead>
+        <div class="page-title">
+            <div>
+                <h2>预约挂号</h2>
+                <div class="subtitle">选择医生快速挂号（默认当天）</div>
+            </div>
+        </div>
+
+        <div class="doctor-list">
+            {% for doc in doctors %}
+                <div class="doctor-item">
+                    <div>
+                        <div class="doctor-name">{{ doc.name }} <span class="muted">（{{ doc.title }}）</span></div>
+                        <div class="doctor-meta">科室：{{ doc.dept_name }} ｜ 挂号费：￥{{ doc.reg_fee }}</div>
+                    </div>
+                    <a class="btn btn--primary btn--sm"
+                       href="{{ url_for('registration.book_appointment', doctor_id=doc.doctor_id) }}"
+                       onclick="return confirm('确定要挂 {{ doc.name }} 的号吗？')">立即挂号</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="page-title">
+            <div>
+                <h2>我的挂号记录</h2>
+                <div class="subtitle">查看状态与支付情况</div>
+            </div>
+            <a class="btn btn--ghost" href="{{ url_for('cashier.patient_payments') }}">去支付/查看费用</a>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
                 <tr>
                     <th>时间</th>
                     <th>预约日/班次</th>
@@ -58,30 +69,39 @@
                     <th>就诊状态</th>
                     <th>支付状态</th>
                 </tr>
-            </thead>
-            <tbody>
+                </thead>
+                <tbody>
                 {% for reg in my_regs %}
-                <tr>
-                    <td>{{ reg.reg_time }}</td>
-                    <td>{{ reg.visit_date }} {{ reg.shift }}</td>
-                    <td>{{ reg.doctor_name }}</td>
-                    <td style="font-weight:bold; font-size:18px;">{{ reg.queue_num }}号</td>
-                    <td><span class="status-badge status-{{ reg.visit_status }}">{{ reg.visit_status }}</span></td>
-                    <td>
-                        {% if reg.fee_status == '已支付' %}
-                            <span class="status-badge status-已就诊">已支付</span>
-                        {% else %}
-                            <span class="status-badge status-未就诊">未支付</span>
-                        {% endif %}
-                    </td>
-                </tr>
+                    <tr>
+                        <td>{{ reg.reg_time }}</td>
+                        <td>{{ reg.visit_date|default('—', true) }} {{ reg.shift|default('—', true) }}</td>
+                        <td>{{ reg.doctor_name }}</td>
+                        <td class="queue">{{ reg.queue_num }}号</td>
+                        <td>
+                            {% if reg.visit_status == '未就诊' %}
+                                <span class="badge badge--warning">未就诊</span>
+                            {% elif reg.visit_status == '就诊中' %}
+                                <span class="badge badge--info">就诊中</span>
+                            {% elif reg.visit_status == '已就诊' %}
+                                <span class="badge badge--success">已就诊</span>
+                            {% else %}
+                                <span class="badge badge--muted">已取消</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if reg.fee_status == '已支付' %}
+                                <span class="badge badge--success">已支付</span>
+                            {% else %}
+                                <span class="badge badge--warning">未支付</span>
+                            {% endif %}
+                        </td>
+                    </tr>
                 {% endfor %}
-            </tbody>
-        </table>
-        <div style="margin-top:10px;">
-            <a href="/patient/payments" class="btn-book">去支付/查看费用</a>
+                {% if not my_regs %}
+                    <tr><td colspan="6" class="muted">暂无挂号记录</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
         </div>
     </div>
-</div>
-</body>
-</html>
+{% endblock %}

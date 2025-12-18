@@ -2,6 +2,7 @@ import pymysql
 from datetime import datetime
 
 DB_NAME = 'clinic_system'
+_SCHEMA_READY = False
 
 
 def get_db_connection():
@@ -41,6 +42,9 @@ def ensure_schema(conn):
     """
     兜底创建/补充挂号所需的表字段，避免列缺失导致运行错误。
     """
+    global _SCHEMA_READY
+    if _SCHEMA_READY:
+        return
     try:
         with conn.cursor() as cursor:
             if not table_exists(conn, 'doctor_schedule'):
@@ -59,7 +63,8 @@ def ensure_schema(conn):
             else:
                 # 针对已有表补全缺失列
                 if not column_exists(conn, 'doctor_schedule', 'schedule_date'):
-                    cursor.execute("ALTER TABLE doctor_schedule ADD COLUMN schedule_date DATE NOT NULL DEFAULT CURDATE();")
+                    # 避免在部分 MySQL 版本上使用函数作为默认值导致失败
+                    cursor.execute("ALTER TABLE doctor_schedule ADD COLUMN schedule_date DATE NULL;")
                 if not column_exists(conn, 'doctor_schedule', 'shift'):
                     cursor.execute("ALTER TABLE doctor_schedule ADD COLUMN shift VARCHAR(10) NOT NULL DEFAULT '上午';")
                 if not column_exists(conn, 'doctor_schedule', 'max_slots'):
@@ -68,6 +73,24 @@ def ensure_schema(conn):
                     cursor.execute("ALTER TABLE doctor_schedule ADD COLUMN booked_slots INT NOT NULL DEFAULT 0;")
                 if not column_exists(conn, 'doctor_schedule', 'status'):
                     cursor.execute("ALTER TABLE doctor_schedule ADD COLUMN status VARCHAR(10) NOT NULL DEFAULT '可用';")
+
+            # 确保 prescription 表存在（药房发药/收费依赖）
+            if not table_exists(conn, 'prescription'):
+                cursor.execute("""
+                    CREATE TABLE prescription (
+                        presc_id INT AUTO_INCREMENT PRIMARY KEY,
+                        reg_id INT NOT NULL,
+                        med_id INT NOT NULL,
+                        dosage VARCHAR(50) NULL,
+                        med_usage VARCHAR(255) NULL,
+                        total_quantity INT NOT NULL DEFAULT 0,
+                        total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+                        dispense_status VARCHAR(20) NOT NULL DEFAULT '未发药',
+                        dispense_time DATETIME NULL,
+                        KEY idx_reg (reg_id),
+                        KEY idx_med (med_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                """)
             if not column_exists(conn, 'registration', 'visit_date'):
                 cursor.execute("ALTER TABLE registration ADD COLUMN visit_date DATE NULL AFTER reg_time;")
             if not column_exists(conn, 'registration', 'shift'):
@@ -84,7 +107,49 @@ def ensure_schema(conn):
                 cursor.execute("ALTER TABLE registration ADD COLUMN check_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER reg_fee;")
             if not column_exists(conn, 'registration', 'paid_time'):
                 cursor.execute("ALTER TABLE registration ADD COLUMN paid_time DATETIME NULL AFTER fee_status;")
+            if not column_exists(conn, 'prescription', 'dispense_status'):
+                cursor.execute("ALTER TABLE prescription ADD COLUMN dispense_status VARCHAR(20) NOT NULL DEFAULT '未发药';")
+            if not column_exists(conn, 'prescription', 'dispense_time'):
+                cursor.execute("ALTER TABLE prescription ADD COLUMN dispense_time DATETIME NULL;")
+            # 医生叫号记录
+            if not column_exists(conn, 'registration', 'called_time'):
+                cursor.execute("ALTER TABLE registration ADD COLUMN called_time DATETIME NULL;")
+            if not column_exists(conn, 'registration', 'call_times'):
+                cursor.execute("ALTER TABLE registration ADD COLUMN call_times INT NOT NULL DEFAULT 0;")
+
+            # ===== 数据回填：避免页面出现 None =====
+            # 1) 病历号为空的患者：用 patient_id 生成稳定且唯一的病历号
+            if column_exists(conn, 'patient', 'medical_record_no'):
+                cursor.execute("""
+                    UPDATE patient
+                    SET medical_record_no = CONCAT('MR', LPAD(patient_id, 8, '0'))
+                    WHERE medical_record_no IS NULL OR medical_record_no = ''
+                """)
+
+            # 2) 就诊日期为空的挂号：默认使用 reg_time 的日期
+            if column_exists(conn, 'registration', 'visit_date'):
+                cursor.execute("""
+                    UPDATE registration
+                    SET visit_date = DATE(reg_time)
+                    WHERE visit_date IS NULL AND reg_time IS NOT NULL
+                """)
+            # 3) 班次为空：给默认值，避免展示 None
+            if column_exists(conn, 'registration', 'shift'):
+                cursor.execute("""
+                    UPDATE registration
+                    SET shift = '全天'
+                    WHERE shift IS NULL OR shift = ''
+                """)
+
+            # 4) 排班日期为空：给默认值，避免列表展示 None
+            if column_exists(conn, 'doctor_schedule', 'schedule_date'):
+                cursor.execute("""
+                    UPDATE doctor_schedule
+                    SET schedule_date = CURDATE()
+                    WHERE schedule_date IS NULL
+                """)
         conn.commit()
+        _SCHEMA_READY = True
     except Exception as e:
         # 记录但不中断主流程
         print(f"[schema] ensure failed: {e}")

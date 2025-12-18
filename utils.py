@@ -8,3 +8,12 @@ def require_login():
     if not session.get('role'):
         return False
     return True
+
+
+def require_doctor():
+    """
+    医生/后台权限校验（当前项目用 doctor 充当前台/管理员）。
+    """
+    if session.get('role') != 'doctor':
+        return False
+    return True

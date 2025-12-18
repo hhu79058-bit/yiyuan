@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}统计报表 - 诊疗通{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .ratio-bar{display:flex;align-items:center;gap:10px}
+        .ratio-bar__track{flex:1;height:10px;border-radius:999px;background:#eef2ff;overflow:hidden}
+        .ratio-bar__fill{height:100%;background:var(--primary)}
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="page-title">
+            <div>
+                <h2>日常业务统计</h2>
+                <div class="subtitle">按日期汇总挂号、接诊、收费与药房发药</div>
+            </div>
+            <form method="GET" action="{{ url_for('stats.daily_stats') }}" style="display:flex; gap:10px; align-items:center;">
+                <span class="muted">日期</span>
+                <input type="date" name="date" value="{{ selected_date }}">
+                <button class="btn btn--ghost btn--sm" type="submit">查询</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="kpi-grid">
+            <div class="kpi">
+                <div class="kpi__label">今日挂号量</div>
+                <div class="kpi__value">{{ summary.reg_total or 0 }}</div>
+                <div class="kpi__hint">取消：{{ summary.reg_cancelled or 0 }} ｜ 已支付：{{ summary.reg_paid or 0 }} ｜ 未支付：{{ summary.reg_unpaid or 0 }}</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi__label">今日接诊完成（病历数）</div>
+                <div class="kpi__value">{{ summary.mr_count or 0 }}</div>
+                <div class="kpi__hint">就诊中：{{ summary.visiting or 0 }} ｜ 已就诊：{{ summary.visited or 0 }}</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi__label">已支付总收入</div>
+                <div class="kpi__value">￥{{ '%.2f' % (summary.paid_total_fee_sum or 0) }}</div>
+                <div class="kpi__hint">挂号：￥{{ '%.2f' % (summary.paid_reg_fee_sum or 0) }} ｜ 检查：￥{{ '%.2f' % (summary.paid_check_fee_sum or 0) }} ｜ 药费：￥{{ '%.2f' % (summary.paid_med_fee_sum or 0) }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="page-title">
+            <div>
+                <h2>科室挂号占比</h2>
+                <div class="subtitle">不含取消</div>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>科室</th><th>数量</th><th>占比</th></tr></thead>
+                <tbody>
+                {% for d in dept_rows %}
+                    <tr>
+                        <td>{{ d.dept_name }}</td>
+                        <td>{{ d.cnt }}</td>
+                        <td style="min-width:280px;">
+                            <div class="ratio-bar">
+                                <div class="ratio-bar__track"><div class="ratio-bar__fill" style="width:{{ '%.2f' % d.ratio }}%"></div></div>
+                                <div class="mono">{{ '%.2f' % d.ratio }}%</div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                {% if not dept_rows %}
+                    <tr><td colspan="3" class="muted">暂无数据</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="page-title">
+                <div>
+                    <h2>医生业务量</h2>
+                    <div class="subtitle">挂号量 / 已完成（不含取消）</div>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>医生</th><th>挂号量</th><th>已完成</th></tr></thead>
+                    <tbody>
+                    {% for dr in doctor_rows %}
+                        <tr>
+                            <td>{{ dr.doctor_name }}</td>
+                            <td>{{ dr.reg_cnt }}</td>
+                            <td>{{ dr.done_cnt or 0 }}</td>
+                        </tr>
+                    {% endfor %}
+                    {% if not doctor_rows %}
+                        <tr><td colspan="3" class="muted">暂无数据</td></tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="page-title">
+                <div>
+                    <h2>已发药 TOP10</h2>
+                    <div class="subtitle">按发药数量</div>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>药品</th><th>数量</th></tr></thead>
+                    <tbody>
+                    {% for m in medicine_rows %}
+                        <tr><td>{{ m.med_name }}</td><td>{{ m.qty_sum }}</td></tr>
+                    {% endfor %}
+                    {% if not medicine_rows %}
+                        <tr><td colspan="2" class="muted">暂无数据</td></tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

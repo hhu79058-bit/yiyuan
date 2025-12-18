@@ -1,61 +1,36 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <title>我的档案</title>
-    <style>
-        body { font-family:'Segoe UI',sans-serif; background:#f5f7fa; margin:0; padding:20px; }
-        .layout { max-width:600px; margin:0 auto; }
-        .card { background:#fff; border-radius:10px; padding:18px; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:16px; }
-        h2 { margin:0 0 10px; }
-        label { display:block; font-weight:600; color:#444; margin:10px 0 4px; }
-        textarea { width:100%; min-height:80px; padding:10px; border:1px solid #dcdfe6; border-radius:6px; box-sizing:border-box; }
-        .btn { padding:10px 14px; border:none; border-radius:6px; background:#409eff; color:#fff; cursor:pointer; font-weight:600; }
-        a { color:#409eff; text-decoration:none; }
-        .flash { padding:10px; border-radius:6px; margin-bottom:8px; }
-        .flash-success { background:#f0f9eb; color:#67c23a; }
-        .flash-error { background:#fef0f0; color:#f56c6c; }
-        .flash-info { background:#ecf5ff; color:#409eff; }
-    </style>
-</head>
-<body>
-<div class="layout">
-    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-            <h2>我的档案</h2>
-            <p style="color:#666;">更新过敏史与既往病史，方便医生诊疗参考。</p>
-        </div>
-        <div>
-            <a href="/patient_home" style="margin-right:12px;">返回首页</a>
-            <a href="/registration/manage" style="margin-right:12px;">挂号管理</a>
-            <a href="/cashier" style="margin-right:12px;">收银台</a>
-            <a href="/logout" style="color:#f56c6c;">退出</a>
-        </div>
-    </div>
+{% extends "base.html" %}
+{% block title %}我的档案 - 诊疗通{% endblock %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for cat, msg in messages %}
-                <div class="flash flash-{{cat}}">{{ msg }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
+{% block content %}
     <div class="card">
+        <div class="page-title">
+            <div>
+                <h2>我的档案</h2>
+                <div class="subtitle">维护过敏史与既往病史，便于医生诊疗参考</div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a class="btn btn--ghost btn--sm" href="{{ url_for('registration.patient_home') }}">返回首页</a>
+                <a class="btn btn--ghost btn--sm" href="{{ url_for('cashier.patient_payments') }}">收银台</a>
+            </div>
+        </div>
+
         {% if patient %}
-            <p>姓名：{{ patient.name }} | 性别：{{ patient.gender }} | 年龄：{{ patient.age }} | 病历号：{{ patient.medical_record_no }}</p>
-            <p>手机号：{{ patient.phone }}</p>
+            <div class="muted" style="margin-top:6px;">
+                姓名：{{ patient.name }} ｜ 性别：{{ patient.gender }} ｜ 年龄：{{ patient.age }} ｜ 病历号：<span class="mono">{{ patient.medical_record_no }}</span>
+                <br>手机号：{{ patient.phone }}
+            </div>
         {% endif %}
-        <form method="POST" action="/patient/profile">
+
+        <form method="POST" action="{{ url_for('patients.patient_profile') }}" style="margin-top:12px;">
             <label>过敏史</label>
             <textarea name="allergy" placeholder="如：青霉素过敏，海鲜过敏">{{ patient.allergy if patient else '' }}</textarea>
 
             <label>既往病史</label>
             <textarea name="past_illness" placeholder="如：高血压、糖尿病等">{{ patient.past_illness if patient else '' }}</textarea>
 
-            <button class="btn" type="submit">保存</button>
+            <div style="margin-top:12px;">
+                <button class="btn btn--primary" type="submit">保存</button>
+            </div>
         </form>
     </div>
-</div>
-</body>
-</html>
+{% endblock %}

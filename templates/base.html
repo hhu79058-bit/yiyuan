@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}诊疗通{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<header class="topbar">
+    <div class="container topbar__inner">
+        {% set role = session.get('role') %}
+        {% if role == 'doctor' %}
+            {% set home_url = url_for('doctor.dashboard') %}
+        {% elif role == 'patient' %}
+            {% set home_url = url_for('registration.patient_home') %}
+        {% else %}
+            {% set home_url = url_for('auth.login') %}
+        {% endif %}
+
+        <a class="brand" href="{{ home_url }}">
+            <div class="brand__name">诊疗通</div>
+            <div class="brand__sub">Clinic System</div>
+        </a>
+
+        {% if role %}
+        <nav class="nav">
+            {% if role == 'doctor' %}
+                <a href="{{ url_for('doctor.dashboard') }}">医生工作台</a>
+                <a href="{{ url_for('registration.registration_manage') }}">挂号管理</a>
+                <a href="{{ url_for('cashier.cashier_page') }}">收银台</a>
+                <a href="{{ url_for('pharmacy.pharmacy_manage') }}">药房管理</a>
+                <a href="{{ url_for('stats.daily_stats') }}">统计报表</a>
+                <a href="{{ url_for('patients.patient_manage') }}">患者档案</a>
+            {% elif role == 'patient' %}
+                <a href="{{ url_for('cashier.patient_payments') }}">收银台</a>
+            {% endif %}
+        </nav>
+
+        <div class="topbar__right">
+            <div class="user-chip">
+                <div class="user-chip__name">{{ session.get('user_name') }}</div>
+                <div class="user-chip__role">{{ '医生端' if role == 'doctor' else '患者端' }}</div>
+            </div>
+            <a class="btn btn--ghost" href="{{ url_for('auth.logout') }}">退出</a>
+        </div>
+        {% endif %}
+    </div>
+</header>
+
+<main class="container main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-stack">
+                {% for cat, msg in messages %}
+                    <div class="flash flash--{{ cat }}">{{ msg }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+{% block extra_body %}{% endblock %}
+</body>
+</html>
