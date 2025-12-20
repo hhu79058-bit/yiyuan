@@ -1,7 +1,7 @@
 from datetime import date
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from db import get_db_connection
-from utils import require_doctor
+from utils import require_admin
 
 stats_bp = Blueprint('stats', __name__)
 
@@ -17,7 +17,7 @@ def _date_condition(field_visit_date, field_reg_time):
 
 @stats_bp.route('/stats')
 def daily_stats():
-    if not require_doctor():
+    if not require_admin():
         return redirect(url_for('auth.login'))
 
     selected_date = request.args.get('date') or date.today().isoformat()

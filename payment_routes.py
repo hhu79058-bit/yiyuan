@@ -1,17 +1,17 @@
 from datetime import date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from db import get_db_connection, column_exists
-from utils import require_login
+from utils import require_admin
 
 payment_bp = Blueprint('cashier', __name__)
 
 
 @payment_bp.route('/cashier')
 def cashier_page():
-    if not require_login():
-        return redirect(url_for('auth.login'))
     if session.get('role') == 'patient':
         return redirect(url_for('cashier.patient_payments'))
+    if not require_admin():
+        return redirect(url_for('auth.login'))
 
     selected_date = request.args.get('date') or date.today().isoformat()
     status_filter = request.args.get('status', 'all')
@@ -62,11 +62,8 @@ def cashier_page():
 
 @payment_bp.route('/cashier/pay/<int:reg_id>', methods=['POST'])
 def cashier_pay(reg_id):
-    if not require_login():
+    if not require_admin():
         return redirect(url_for('auth.login'))
-    if session.get('role') == 'patient':
-        flash("患者不可操作收银台", 'error')
-        return redirect(url_for('cashier.patient_payments'))
 
     conn = get_db_connection()
     try:

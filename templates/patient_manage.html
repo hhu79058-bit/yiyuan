@@ -16,55 +16,61 @@
         </div>
     </div>
 
-    <div class="grid grid-2">
-        <div class="card">
-            <div class="page-title">
-                <div>
-                    <h2>新建患者档案</h2>
-                    <div class="subtitle">默认登录密码 <span class="mono">123456</span></div>
+    <div class="grid">
+        {% if session.get('role') == 'admin' %}
+            <div class="card">
+                <div class="page-title">
+                    <div>
+                        <h2>新建患者档案</h2>
+                        <div class="subtitle">默认登录密码 <span class="mono">123456</span></div>
+                    </div>
                 </div>
+                <form method="POST" action="{{ url_for('patients.patient_create') }}">
+                    <div class="form-row form-row-2">
+                        <div>
+                            <label>姓名</label>
+                            <input name="name" required>
+                        </div>
+                        <div>
+                            <label>手机号</label>
+                            <input name="phone" required>
+                        </div>
+                    </div>
+                    <div class="form-row form-row-3">
+                        <div>
+                            <label>性别</label>
+                            <select name="gender">
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>年龄</label>
+                            <input type="number" name="age" min="0" required>
+                        </div>
+                        <div>
+                            <label>过敏史</label>
+                            <input name="allergy" placeholder="可选">
+                        </div>
+                    </div>
+                    <label>病历号（留空自动生成）</label>
+                    <input name="medical_record_no" placeholder="如留空将自动生成">
+                    <div style="margin-top:12px;">
+                        <button class="btn btn--primary" type="submit">创建档案</button>
+                    </div>
+                </form>
             </div>
-            <form method="POST" action="{{ url_for('patients.patient_create') }}">
-                <div class="form-row form-row-2">
-                    <div>
-                        <label>姓名</label>
-                        <input name="name" required>
-                    </div>
-                    <div>
-                        <label>手机号</label>
-                        <input name="phone" required>
-                    </div>
-                </div>
-                <div class="form-row form-row-3">
-                    <div>
-                        <label>性别</label>
-                        <select name="gender">
-                            <option value="男">男</option>
-                            <option value="女">女</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>年龄</label>
-                        <input type="number" name="age" min="0" required>
-                    </div>
-                    <div>
-                        <label>过敏史</label>
-                        <input name="allergy" placeholder="可选">
-                    </div>
-                </div>
-                <label>病历号（留空自动生成）</label>
-                <input name="medical_record_no" placeholder="如留空将自动生成">
-                <div style="margin-top:12px;">
-                    <button class="btn btn--primary" type="submit">创建档案</button>
-                </div>
-            </form>
-        </div>
+        {% endif %}
 
         <div class="card">
             <div class="page-title">
                 <div>
                     <h2>患者列表</h2>
-                    <div class="subtitle">可直接编辑，点击“记录”查看历史</div>
+                    {% if session.get('role') == 'admin' %}
+                        <div class="subtitle">可直接编辑，点击“记录”查看历史</div>
+                    {% else %}
+                        <div class="subtitle">仅可查看本人接诊患者，点击“记录”查看历史</div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -78,24 +84,37 @@
                     <tbody>
                     {% for p in patients %}
                         <tr>
-                            <form method="POST" action="{{ url_for('patients.patient_update') }}">
-                                <td class="mono">{{ p.patient_id }}<input type="hidden" name="patient_id" value="{{ p.patient_id }}"></td>
-                                <td><input name="name" value="{{ p.name }}"></td>
-                                <td>
-                                    <select name="gender">
-                                        <option value="男" {% if p.gender=='男' %}selected{% endif %}>男</option>
-                                        <option value="女" {% if p.gender=='女' %}selected{% endif %}>女</option>
-                                    </select>
-                                </td>
-                                <td><input type="number" name="age" value="{{ p.age }}"></td>
-                                <td><input name="phone" value="{{ p.phone }}"></td>
-                                <td><input name="allergy" value="{{ p.allergy }}"></td>
-                                <td><input name="medical_record_no" value="{{ p.medical_record_no|default('', true) }}"></td>
+                            {% if session.get('role') == 'admin' %}
+                                <form method="POST" action="{{ url_for('patients.patient_update') }}">
+                                    <td class="mono">{{ p.patient_id }}<input type="hidden" name="patient_id" value="{{ p.patient_id }}"></td>
+                                    <td><input name="name" value="{{ p.name }}"></td>
+                                    <td>
+                                        <select name="gender">
+                                            <option value="男" {% if p.gender=='男' %}selected{% endif %}>男</option>
+                                            <option value="女" {% if p.gender=='女' %}selected{% endif %}>女</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="age" value="{{ p.age }}"></td>
+                                    <td><input name="phone" value="{{ p.phone }}"></td>
+                                    <td><input name="allergy" value="{{ p.allergy }}"></td>
+                                    <td><input name="medical_record_no" value="{{ p.medical_record_no|default('', true) }}"></td>
+                                    <td style="white-space:nowrap;">
+                                        <button class="btn btn--primary btn--sm" type="submit">保存</button>
+                                        <a class="btn btn--ghost btn--sm" href="{{ url_for('patients.patient_detail', patient_id=p.patient_id) }}">记录</a>
+                                    </td>
+                                </form>
+                            {% else %}
+                                <td class="mono">{{ p.patient_id }}</td>
+                                <td>{{ p.name }}</td>
+                                <td>{{ p.gender }}</td>
+                                <td>{{ p.age }}</td>
+                                <td>{{ p.phone }}</td>
+                                <td>{{ p.allergy }}</td>
+                                <td>{{ p.medical_record_no|default('', true) }}</td>
                                 <td style="white-space:nowrap;">
-                                    <button class="btn btn--primary btn--sm" type="submit">保存</button>
                                     <a class="btn btn--ghost btn--sm" href="{{ url_for('patients.patient_detail', patient_id=p.patient_id) }}">记录</a>
                                 </td>
-                            </form>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                     {% if not patients %}

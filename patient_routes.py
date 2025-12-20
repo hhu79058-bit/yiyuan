@@ -1,35 +1,48 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from db import get_db_connection, generate_medical_record_no, table_exists
-from utils import require_login, require_doctor
+from utils import require_admin
 
 patients_bp = Blueprint('patients', __name__)
 
 
 @patients_bp.route('/patients')
 def patient_manage():
-    if not require_doctor():
+    role = session.get('role')
+    if role not in ('doctor', 'admin'):
         return redirect(url_for('auth.login'))
 
     keyword = request.args.get('q', '').strip()
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            if keyword:
+            if role == 'doctor':
                 like_kw = f"%{keyword}%"
                 cursor.execute("""
-                    SELECT patient_id, name, gender, age, phone, allergy, medical_record_no
-                    FROM patient
-                    WHERE name LIKE %s OR medical_record_no LIKE %s
-                    ORDER BY patient_id DESC
+                    SELECT DISTINCT p.patient_id, p.name, p.gender, p.age, p.phone, p.allergy, p.medical_record_no
+                    FROM patient p
+                             JOIN registration r ON r.patient_id = p.patient_id
+                    WHERE r.doctor_id = %s
+                      AND (%s = '' OR p.name LIKE %s OR p.medical_record_no LIKE %s)
+                    ORDER BY p.patient_id DESC
                     LIMIT 200
-                """, (like_kw, like_kw))
+                """, (session.get('user_id'), keyword, like_kw, like_kw))
             else:
-                cursor.execute("""
-                    SELECT patient_id, name, gender, age, phone, allergy, medical_record_no
-                    FROM patient
-                    ORDER BY patient_id DESC
-                    LIMIT 200
-                """)
+                if keyword:
+                    like_kw = f"%{keyword}%"
+                    cursor.execute("""
+                        SELECT patient_id, name, gender, age, phone, allergy, medical_record_no
+                        FROM patient
+                        WHERE name LIKE %s OR medical_record_no LIKE %s
+                        ORDER BY patient_id DESC
+                        LIMIT 200
+                    """, (like_kw, like_kw))
+                else:
+                    cursor.execute("""
+                        SELECT patient_id, name, gender, age, phone, allergy, medical_record_no
+                        FROM patient
+                        ORDER BY patient_id DESC
+                        LIMIT 200
+                    """)
             patients = cursor.fetchall()
     finally:
         conn.close()
@@ -39,7 +52,7 @@ def patient_manage():
 
 @patients_bp.route('/patients/create', methods=['POST'])
 def patient_create():
-    if not require_doctor():
+    if not require_admin():
         return redirect(url_for('auth.login'))
 
     name = request.form.get('name')
@@ -76,7 +89,7 @@ def patient_create():
 
 @patients_bp.route('/patients/update', methods=['POST'])
 def patient_update():
-    if not require_doctor():
+    if not require_admin():
         return redirect(url_for('auth.login'))
 
     patient_id = request.form.get('patient_id')
@@ -117,7 +130,8 @@ def patient_update():
 
 @patients_bp.route('/patients/<int:patient_id>')
 def patient_detail(patient_id):
-    if not require_doctor():
+    role = session.get('role')
+    if role not in ('doctor', 'admin'):
         return redirect(url_for('auth.login'))
 
     conn = get_db_connection()
@@ -126,6 +140,17 @@ def patient_detail(patient_id):
     med_records = []
     try:
         with conn.cursor() as cursor:
+            if role == 'doctor':
+                cursor.execute("""
+                    SELECT 1
+                    FROM registration
+                    WHERE patient_id=%s AND doctor_id=%s
+                    LIMIT 1
+                """, (patient_id, session.get('user_id')))
+                if not cursor.fetchone():
+                    flash("仅可查看本人接诊过的患者档案。", 'error')
+                    return redirect(url_for('patients.patient_manage'))
+
             cursor.execute("""
                 SELECT patient_id, name, gender, age, phone, allergy, medical_record_no
                 FROM patient WHERE patient_id=%s
@@ -196,3 +221,33 @@ def patient_profile():
         conn.close()
 
     return render_template('patient_profile.html', patient=patient)
+
+
+@patients_bp.route('/patient/records')
+def patient_records():
+    """患者查看自己的就诊记录与病历摘要。"""
+    if session.get('role') != 'patient':
+        return redirect(url_for('auth.login'))
+
+    patient_id = session.get('user_id')
+    conn = get_db_connection()
+    rows = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT r.reg_id, r.reg_time, r.visit_date, r.time_slot, r.shift,
+                       r.visit_status, r.fee_status,
+                       d.name AS doctor_name, dept.dept_name,
+                       mr.main_complaint, mr.diagnosis, mr.create_time
+                FROM registration r
+                         JOIN doctor d ON r.doctor_id = d.doctor_id
+                         JOIN department dept ON d.dept_id = dept.dept_id
+                         LEFT JOIN medical_record mr ON mr.reg_id = r.reg_id
+                WHERE r.patient_id = %s
+                ORDER BY r.reg_time DESC
+            """, (patient_id,))
+            rows = cursor.fetchall()
+    finally:
+        conn.close()
+
+    return render_template('patient_visits.html', rows=rows)

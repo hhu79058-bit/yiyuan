@@ -3,6 +3,11 @@
 
 {% block extra_head %}
     <style>
+        .dept-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 16px}
+        .dept-tab{border:1px solid var(--border);background:#fff;border-radius:999px;padding:6px 14px;font-weight:600}
+        .dept-tab.is-active{border-color:rgba(47,125,246,.5);color:var(--primary);background:rgba(47,125,246,.08)}
+        .dept-section{margin-bottom:16px}
+        .dept-title{font-weight:800;margin:6px 0 10px}
         .doctor-list{display:grid;gap:10px}
         .doctor-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
         .doctor-item:hover{border-color:rgba(47,125,246,.35);box-shadow:0 10px 30px rgba(47,125,246,.08)}
@@ -21,6 +26,7 @@
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <a class="btn btn--ghost" href="{{ url_for('patients.patient_profile') }}">我的档案</a>
+                <a class="btn btn--ghost" href="{{ url_for('patients.patient_records') }}">就诊记录</a>
                 <a class="btn btn--primary" href="{{ url_for('cashier.patient_payments') }}">收银台</a>
             </div>
         </div>
@@ -30,24 +36,66 @@
         <div class="page-title">
             <div>
                 <h2>预约挂号</h2>
-                <div class="subtitle">选择医生快速挂号（默认当天）</div>
+                <div class="subtitle">按科室筛选医生快速挂号（默认当天）</div>
             </div>
         </div>
 
-        <div class="doctor-list">
-            {% for doc in doctors %}
-                <div class="doctor-item">
-                    <div>
-                        <div class="doctor-name">{{ doc.name }} <span class="muted">（{{ doc.title }}）</span></div>
-                        <div class="doctor-meta">科室：{{ doc.dept_name }} ｜ 挂号费：￥{{ doc.reg_fee }}</div>
-                    </div>
-                    <a class="btn btn--primary btn--sm"
-                       href="{{ url_for('registration.book_appointment', doctor_id=doc.doctor_id) }}"
-                       onclick="return confirm('确定要挂 {{ doc.name }} 的号吗？')">立即挂号</a>
-                </div>
+        <div class="dept-tabs" id="dept-tabs">
+            <button class="dept-tab is-active" type="button" data-dept="all">全部</button>
+            {% for dept in doctors_by_dept %}
+                <button class="dept-tab" type="button" data-dept="{{ dept.dept_name|e }}">{{ dept.dept_name }}</button>
             {% endfor %}
         </div>
+
+        <div id="dept-sections">
+            {% for dept in doctors_by_dept %}
+                <div class="dept-section" data-dept="{{ dept.dept_name|e }}">
+                    <div class="dept-title">{{ dept.dept_name }}</div>
+                    <div class="doctor-list">
+                        {% for doc in dept.doctors %}
+                            <div class="doctor-item">
+                                <div>
+                                    <div class="doctor-name">{{ doc.name }} <span class="muted">（{{ doc.title }}）</span></div>
+                                    <div class="doctor-meta">科室：{{ doc.dept_name }} ｜ 挂号费：￥{{ doc.reg_fee }}</div>
+                                </div>
+                                <form method="POST" action="{{ url_for('registration.book_appointment', doctor_id=doc.doctor_id) }}" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <input type="date" name="visit_date" value="{{ today }}" style="padding:6px 10px;">
+                                    <select name="time_slot" style="padding:6px 10px;">
+                                        {% for slot in time_slots %}
+                                            <option value="{{ slot }}">{{ slot }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button class="btn btn--primary btn--sm" type="submit">立即挂号</button>
+                                </form>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+            {% if not doctors_by_dept %}
+                <div class="muted">暂无可预约医生</div>
+            {% endif %}
+        </div>
     </div>
+
+    <script>
+        (function () {
+            const tabs = document.querySelectorAll('#dept-tabs .dept-tab');
+            const sections = document.querySelectorAll('#dept-sections .dept-section');
+            if (!tabs.length || !sections.length) return;
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => {
+                    const target = tab.getAttribute('data-dept');
+                    tabs.forEach((t) => t.classList.remove('is-active'));
+                    tab.classList.add('is-active');
+                    sections.forEach((sec) => {
+                        const match = target === 'all' || sec.getAttribute('data-dept') === target;
+                        sec.style.display = match ? '' : 'none';
+                    });
+                });
+            });
+        })();
+    </script>
 
     <div class="card">
         <div class="page-title">
@@ -63,7 +111,7 @@
                 <thead>
                 <tr>
                     <th>时间</th>
-                    <th>预约日/班次</th>
+                    <th>预约日/时间段</th>
                     <th>医生</th>
                     <th>排队号</th>
                     <th>就诊状态</th>
@@ -74,7 +122,7 @@
                 {% for reg in my_regs %}
                     <tr>
                         <td>{{ reg.reg_time }}</td>
-                        <td>{{ reg.visit_date|default('—', true) }} {{ reg.shift|default('—', true) }}</td>
+                        <td>{{ reg.visit_date|default('—', true) }} {{ reg.time_slot|default('—', true) }}</td>
                         <td>{{ reg.doctor_name }}</td>
                         <td class="queue">{{ reg.queue_num }}号</td>
                         <td>

@@ -12,8 +12,17 @@ def require_login():
 
 def require_doctor():
     """
-    医生/后台权限校验（当前项目用 doctor 充当前台/管理员）。
+    医生/后台权限校验（doctor 或 admin）。
     """
-    if session.get('role') != 'doctor':
+    if session.get('role') not in ('doctor', 'admin'):
+        return False
+    return True
+
+
+def require_admin():
+    """
+    管理员权限校验（admin）。
+    """
+    if session.get('role') != 'admin':
         return False
     return True

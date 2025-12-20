@@ -1,13 +1,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from db import get_db_connection
-from utils import require_doctor
+from utils import require_admin
 
 pharmacy_bp = Blueprint('pharmacy', __name__)
 
 
 @pharmacy_bp.route('/pharmacy')
 def pharmacy_manage():
-    if not require_doctor():
+    if not require_admin():
         return redirect(url_for('auth.login'))
 
     conn = get_db_connection()
@@ -46,7 +46,7 @@ def pharmacy_manage():
 
 @pharmacy_bp.route('/pharmacy/add', methods=['POST'])
 def pharmacy_add():
-    if not require_doctor():
+    if not require_admin():
         return redirect(url_for('auth.login'))
 
     med_name = request.form.get('med_name')
@@ -72,7 +72,7 @@ def pharmacy_add():
 
 @pharmacy_bp.route('/pharmacy/update', methods=['POST'])
 def pharmacy_update():
-    if not require_doctor():
+    if not require_admin():
         return redirect(url_for('auth.login'))
 
     med_id = request.form.get('med_id')
@@ -97,7 +97,7 @@ def pharmacy_update():
 
 @pharmacy_bp.route('/pharmacy/delete/<int:med_id>')
 def pharmacy_delete(med_id):
-    if not require_doctor():
+    if not require_admin():
         return redirect(url_for('auth.login'))
 
     conn = get_db_connection()
@@ -119,7 +119,7 @@ def pharmacy_dispense():
     """
     发药：按 reg_id + med_id 对单条处方发药并扣减库存。
     """
-    if not require_doctor():
+    if not require_admin():
         return redirect(url_for('auth.login'))
 
     reg_id = request.form.get('reg_id')

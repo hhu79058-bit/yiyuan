@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, session, request, flash
 from db import get_db_connection
+from utils import require_admin
 
 doctor_bp = Blueprint('doctor', __name__)
 
@@ -15,14 +16,14 @@ def dashboard():
             sql = """
                   SELECT r.reg_id, r.patient_id, p.name AS patient_name, p.gender, p.age,
                          p.medical_record_no, p.allergy, p.past_illness,
-                         r.visit_status, r.queue_num, r.visit_date, r.shift,
+                         r.visit_status, r.queue_num, r.visit_date, r.shift, r.time_slot,
                          r.called_time, r.call_times
                   FROM registration r
                            JOIN patient p ON r.patient_id = p.patient_id
-                  WHERE r.doctor_id = %s \
-                    AND (r.visit_date = CURDATE() OR (r.visit_date IS NULL AND DATE(r.reg_time) = CURDATE())) \
+                  WHERE r.doctor_id = %s
+                    AND (r.visit_date = CURDATE() OR (r.visit_date IS NULL AND DATE(r.reg_time) = CURDATE()))
                     AND r.visit_status IN ('未就诊', '就诊中')
-                  ORDER BY r.visit_status DESC, r.queue_num ASC
+                  ORDER BY r.time_slot, r.queue_num ASC
                   """
             cursor.execute(sql, (session['user_id'],))
             patients = cursor.fetchall()
@@ -37,7 +38,7 @@ def dashboard():
 @doctor_bp.route('/call_patient/<int:reg_id>')
 def call_patient(reg_id):
     """
-    叫号：记录叫号次数与时间，不改变就诊状态。
+    叫号：记录叫号次数与时间，叫号成功后方可接诊。
     """
     if session.get('role') != 'doctor':
         return redirect(url_for('auth.login'))
@@ -45,7 +46,6 @@ def call_patient(reg_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            # 限定只能叫自己名下的号
             cursor.execute("SELECT doctor_id FROM registration WHERE reg_id=%s", (reg_id,))
             row = cursor.fetchone()
             if not row or row['doctor_id'] != session.get('user_id'):
@@ -88,7 +88,7 @@ def doctor_patient_detail(patient_id):
             patient = cursor.fetchone()
 
             cursor.execute("""
-                SELECT r.reg_time, r.visit_date, r.shift, r.visit_status, r.queue_num, r.reg_fee,
+                SELECT r.reg_time, r.visit_date, r.shift, r.time_slot, r.visit_status, r.queue_num, r.reg_fee,
                        d.name AS doctor_name, dept.dept_name
                 FROM registration r
                          JOIN doctor d ON r.doctor_id = d.doctor_id
@@ -127,12 +127,29 @@ def start_consult(reg_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            sql = "UPDATE registration SET visit_status = '就诊中' WHERE reg_id = %s"
-            cursor.execute(sql, (reg_id,))
+            cursor.execute("""
+                SELECT visit_status, called_time, doctor_id
+                FROM registration WHERE reg_id=%s
+            """, (reg_id,))
+            reg = cursor.fetchone()
+            if not reg or reg['doctor_id'] != session.get('user_id'):
+                flash("无权接诊该患者", 'error')
+                return redirect(url_for('doctor.dashboard'))
+            if reg['visit_status'] == '已就诊':
+                flash("该患者已就诊完成", 'info')
+                return redirect(url_for('doctor.dashboard'))
+            if reg['visit_status'] == '已取消':
+                flash("该挂号已取消", 'error')
+                return redirect(url_for('doctor.dashboard'))
+            if not reg['called_time']:
+                flash("请先叫号，再接诊", 'error')
+                return redirect(url_for('doctor.dashboard'))
+
+            cursor.execute("UPDATE registration SET visit_status = '就诊中' WHERE reg_id = %s", (reg_id,))
             conn.commit()
     finally:
         conn.close()
-        return redirect(url_for('doctor.consultation_page', reg_id=reg_id))
+    return redirect(url_for('doctor.consultation_page', reg_id=reg_id))
 
 
 @doctor_bp.route('/consultation/<int:reg_id>')
@@ -144,13 +161,17 @@ def consultation_page(reg_id):
     try:
         with conn.cursor() as cursor:
             sql_patient = """
-                          SELECT r.reg_id, p.name, p.gender, p.age, p.allergy, p.past_illness
+                          SELECT r.reg_id, r.visit_status, p.name, p.gender, p.age, p.allergy, p.past_illness
                           FROM registration r
                                    JOIN patient p ON r.patient_id = p.patient_id
                           WHERE r.reg_id = %s
                           """
             cursor.execute(sql_patient, (reg_id,))
             patient = cursor.fetchone()
+            if not patient or patient['visit_status'] not in ('就诊中',):
+                flash("当前挂号不在可问诊状态", 'error')
+                conn.close()
+                return redirect(url_for('doctor.dashboard'))
 
             cursor.execute("SELECT * FROM medicine WHERE stock > 0")
             medicines = cursor.fetchall()
@@ -188,8 +209,14 @@ def submit_consultation():
                         flash("处方包含不存在的药品，已取消提交", 'error')
                         conn.rollback()
                         return redirect(url_for('doctor.consultation_page', reg_id=reg_id))
-                    if int(m['stock']) < int(quantities[i]):
-                        flash(f"库存不足：{m['med_name']}（库存 {m['stock']}），请调整数量", 'error')
+                    try:
+                        qty_need = int(quantities[i])
+                    except Exception:
+                        flash("数量必须为数字", 'error')
+                        conn.rollback()
+                        return redirect(url_for('doctor.consultation_page', reg_id=reg_id))
+                    if int(m['stock']) < qty_need:
+                        flash(f"库存不足：{m['med_name']}（库存{m['stock']}），请调整数量", 'error')
                         conn.rollback()
                         return redirect(url_for('doctor.consultation_page', reg_id=reg_id))
 
@@ -221,3 +248,11 @@ def submit_consultation():
         conn.close()
 
     return redirect(url_for('doctor.dashboard'))
+
+
+@doctor_bp.route('/admin')
+def admin_home():
+    """管理端入口（管理员），聚合挂号、排班、药房、统计。"""
+    if not require_admin():
+        return redirect(url_for('auth.login'))
+    return render_template('admin_home.html')

@@ -8,11 +8,14 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+{% if request.endpoint != 'auth.login' %}
 <header class="topbar">
     <div class="container topbar__inner">
         {% set role = session.get('role') %}
         {% if role == 'doctor' %}
             {% set home_url = url_for('doctor.dashboard') %}
+        {% elif role == 'admin' %}
+            {% set home_url = url_for('doctor.admin_home') %}
         {% elif role == 'patient' %}
             {% set home_url = url_for('registration.patient_home') %}
         {% else %}
@@ -28,6 +31,9 @@
         <nav class="nav">
             {% if role == 'doctor' %}
                 <a href="{{ url_for('doctor.dashboard') }}">医生工作台</a>
+                <a href="{{ url_for('patients.patient_manage') }}">患者档案</a>
+            {% elif role == 'admin' %}
+                <a href="{{ url_for('doctor.admin_home') }}">管理端</a>
                 <a href="{{ url_for('registration.registration_manage') }}">挂号管理</a>
                 <a href="{{ url_for('cashier.cashier_page') }}">收银台</a>
                 <a href="{{ url_for('pharmacy.pharmacy_manage') }}">药房管理</a>
@@ -41,13 +47,22 @@
         <div class="topbar__right">
             <div class="user-chip">
                 <div class="user-chip__name">{{ session.get('user_name') }}</div>
-                <div class="user-chip__role">{{ '医生端' if role == 'doctor' else '患者端' }}</div>
+                <div class="user-chip__role">
+                    {% if role == 'doctor' %}
+                        医生端
+                    {% elif role == 'admin' %}
+                        管理端
+                    {% else %}
+                        患者端
+                    {% endif %}
+                </div>
             </div>
             <a class="btn btn--ghost" href="{{ url_for('auth.logout') }}">退出</a>
         </div>
         {% endif %}
     </div>
 </header>
+{% endif %}
 
 <main class="container main">
     {% with messages = get_flashed_messages(with_categories=true) %}

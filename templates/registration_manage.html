@@ -6,6 +6,7 @@
         .stat-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
         .stat{border:1px solid rgba(47,125,246,.2);background:rgba(47,125,246,.06);border-radius:14px;padding:12px 14px;min-width:220px}
         .stat .v{font-size:22px;font-weight:900;margin-top:6px}
+        .slot-note{font-size:12px;color:var(--muted)}
     </style>
     <script>
         function filterDoctors(deptSelectId, docSelectId) {
@@ -123,7 +124,20 @@
                                 <option value="上午">上午</option>
                                 <option value="下午">下午</option>
                                 <option value="夜间">夜间</option>
+                                <option value="全天">全天</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row-2">
+                        <div>
+                            <label>时间段</label>
+                            <select name="time_slot" required>
+                                {% for slot in time_slots %}
+                                    <option value="{{ slot }}">{{ slot }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="slot-note">按小时精准挂号</div>
                         </div>
                     </div>
 
@@ -176,7 +190,20 @@
                                 <option value="上午">上午</option>
                                 <option value="下午">下午</option>
                                 <option value="夜间">夜间</option>
+                                <option value="全天">全天</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row-2">
+                        <div>
+                            <label>时间段</label>
+                            <select name="time_slot" required>
+                                {% for slot in time_slots %}
+                                    <option value="{{ slot }}">{{ slot }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="slot-note">按小时精准挂号</div>
                         </div>
                     </div>
 
@@ -204,7 +231,7 @@
                     <th>患者</th>
                     <th>病历号</th>
                     <th>科室/医生</th>
-                    <th>班次</th>
+                    <th>时间段</th>
                     <th>状态</th>
                     <th>支付</th>
                     <th>操作</th>
@@ -217,7 +244,7 @@
                         <td>{{ r.patient_name }}</td>
                         <td class="mono">{{ r.medical_record_no|default('—', true) }}</td>
                         <td>{{ r.dept_name }} / {{ r.doctor_name }}</td>
-                        <td>{{ r.shift }}</td>
+                        <td>{{ r.visit_date|default('—', true) }} {{ r.time_slot|default('—', true) }}</td>
                         <td>
                             {% if r.visit_status == '未就诊' %}
                                 <span class="badge badge--warning">未就诊</span>
@@ -262,11 +289,11 @@
         </div>
         <div class="stat-row">
             <div class="stat">
-                <div class="muted">今日挂号</div>
-                <div class="v">{{ totals.total_cnt or 0 }} 人次</div>
-            </div>
-            <div class="stat">
-                <div class="muted">挂号费合计</div>
+            <div class="muted">今日挂号</div>
+            <div class="v">{{ totals.total_cnt or 0 }} 人次</div>
+        </div>
+        <div class="stat">
+            <div class="muted">挂号费合计</div>
                 <div class="v">￥{{ totals.total_fee or 0 }}</div>
             </div>
         </div>
@@ -279,6 +306,21 @@
                     <tr><td>{{ d.dept_name }}</td><td>{{ d.cnt }}</td></tr>
                 {% endfor %}
                 {% if not dept_stats %}
+                    <tr><td colspan="2" class="muted">暂无数据</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px;">
+            <div class="subtitle" style="margin-bottom:6px;">科室分类与医生数量</div>
+            <table class="table">
+                <thead><tr><th>科室</th><th>医生数量</th></tr></thead>
+                <tbody>
+                {% for d in dept_doctors %}
+                    <tr><td>{{ d.dept_name }}</td><td>{{ d.doctor_count }}</td></tr>
+                {% endfor %}
+                {% if not dept_doctors %}
                     <tr><td colspan="2" class="muted">暂无数据</td></tr>
                 {% endif %}
                 </tbody>
@@ -314,11 +356,20 @@
                         <option value="上午">上午</option>
                         <option value="下午">下午</option>
                         <option value="夜间">夜间</option>
+                        <option value="全天">全天</option>
                     </select>
                 </div>
             </div>
 
-            <div class="form-row form-row-2">
+            <div class="form-row form-row-3">
+                <div>
+                    <label>时间段</label>
+                    <select name="time_slot">
+                        {% for slot in time_slots %}
+                            <option value="{{ slot }}">{{ slot }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div>
                     <label>号源数</label>
                     <input type="number" name="max_slots" min="1" value="20" required>
@@ -340,13 +391,14 @@
         <div class="table-wrap" style="margin-top:14px;">
             <table class="table">
                 <thead>
-                <tr><th>日期</th><th>班次</th><th>医生</th><th>科室</th><th>号源</th><th>状态</th><th>操作</th></tr>
+                <tr><th>日期</th><th>班次</th><th>时间段</th><th>医生</th><th>科室</th><th>号源</th><th>状态</th><th>操作</th></tr>
                 </thead>
                 <tbody>
                 {% for s in schedules %}
                     <tr>
                         <td>{{ s.schedule_date|default('—', true) }}</td>
                         <td>{{ s.shift }}</td>
+                        <td>{{ s.time_slot|default('—', true) }}</td>
                         <td>{{ s.doctor_name }}</td>
                         <td>{{ s.dept_name }}</td>
                         <td>{{ s.booked_slots }}/{{ s.max_slots }}</td>

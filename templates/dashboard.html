@@ -13,7 +13,7 @@
         <div class="page-title">
             <div>
                 <h2>医生工作台</h2>
-                <div class="subtitle">欢迎，{{ doctor_name }}。实时查看候诊、叫号并进入诊疗。</div>
+                <div class="subtitle">欢迎，{{ doctor_name }}。请先叫号再接诊，叫号成功后才能进入问诊。</div>
             </div>
         </div>
     </div>
@@ -27,6 +27,19 @@
         </div>
 
         {% if patients %}
+            {% set wait_list = patients|selectattr('visit_status','equalto','未就诊')|list %}
+            {% if wait_list %}
+                {% set next = wait_list[0] %}
+                <div class="card" style="margin-bottom:14px; background:rgba(47,125,246,.06); border:1px dashed rgba(47,125,246,.3);">
+                    <div class="page-title" style="margin:0;">
+                        <div>
+                            <h3>叫号栏</h3>
+                            <div class="subtitle">优先叫号后再接诊，当前待叫号：{{ next.patient_name }}（{{ next.time_slot|default('—', true) }}，{{ next.queue_num }}号）</div>
+                        </div>
+                        <a class="btn btn--primary" href="{{ url_for('doctor.call_patient', reg_id=next.reg_id) }}">立即叫号</a>
+                    </div>
+                </div>
+            {% endif %}
             <div class="table-wrap">
                 <table class="table">
                     <thead>
@@ -34,6 +47,7 @@
                         <th>排队号</th>
                         <th>姓名</th>
                         <th>病历号</th>
+                        <th>时间段</th>
                         <th>性别</th>
                         <th>年龄</th>
                         <th>过敏/既往</th>
@@ -52,6 +66,7 @@
                                 </a>
                             </td>
                             <td class="mono">{{ p.medical_record_no|default('—', true) }}</td>
+                            <td>{{ p.time_slot|default('—', true) }}</td>
                             <td>{{ p.gender }}</td>
                             <td>{{ p.age }}岁</td>
                             <td>
@@ -80,7 +95,7 @@
                             </td>
                             <td style="white-space:nowrap;">
                                 {% if p.visit_status == '未就诊' %}
-                                    <a class="btn btn--primary btn--sm" href="{{ url_for('doctor.start_consult', reg_id=p.reg_id) }}">接诊</a>
+                                    <a class="btn btn--primary btn--sm" href="{{ url_for('doctor.start_consult', reg_id=p.reg_id) }}" title="先叫号再接诊">接诊</a>
                                 {% elif p.visit_status == '就诊中' %}
                                     <a class="btn btn--primary btn--sm" href="{{ url_for('doctor.consultation_page', reg_id=p.reg_id) }}">继续问诊</a>
                                 {% else %}

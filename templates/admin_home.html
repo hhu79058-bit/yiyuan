@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}管理端 - 诊疗通{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-title">
+        <div>
+            <h2>管理端</h2>
+            <div class="subtitle">仅管理员可进入挂号、排班、药房与统计报表。</div>
+        </div>
+    </div>
+
+    <div class="grid grid-2" style="gap:16px; display: grid; grid-template-columns: 1fr 1fr; align-items: stretch;">
+
+        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0;">
+            <div style="flex: 1;">
+                <div class="section__head">
+                    <div>
+                        <h3>挂号 / 排班</h3>
+                        <div class="subtitle">新挂号、退号、每日排班</div>
+                    </div>
+                </div>
+                <p class="muted">支持按日期管理当日挂号，并设置每小时号源。</p>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <a class="btn btn--primary" href="{{ url_for('registration.registration_manage') }}">进入挂号管理</a>
+            </div>
+        </div>
+
+        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0;">
+            <div style="flex: 1;">
+                <div class="section__head">
+                    <div>
+                        <h3>药房管理</h3>
+                        <div class="subtitle">药品入库/调价、发药</div>
+                    </div>
+                </div>
+                <p class="muted">发药同步扣减库存，避免重复发药。</p>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <a class="btn btn--primary" href="{{ url_for('pharmacy.pharmacy_manage') }}">进入药房</a>
+            </div>
+        </div>
+
+        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0; margin-top: 16px;">
+            <div style="flex: 1;">
+                <div class="section__head">
+                    <div>
+                        <h3>统计报表</h3>
+                        <div class="subtitle">当日挂号 / 收费 / 发药概览</div>
+                    </div>
+                </div>
+                <p class="muted">快速查看业务汇总与科室/医生分布。</p>
+            </div>
+            <div style="margin-top:12px;">
+                <a class="btn btn--primary" href="{{ url_for('stats.daily_stats') }}">查看报表</a>
+            </div>
+        </div>
+
+        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0; margin-top: 16px;">
+            <div style="flex: 1;">
+                <div class="section__head">
+                    <div>
+                        <h3>收银台</h3>
+                        <div class="subtitle">收费、支付状态管理</div>
+                    </div>
+                </div>
+                <p class="muted">按日查看挂号费/药费，快速标记支付。</p>
+            </div>
+            <div style="margin-top:12px;">
+                <a class="btn btn--primary" href="{{ url_for('cashier.cashier_page') }}">进入收银台</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
