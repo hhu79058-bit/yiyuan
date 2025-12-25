@@ -42,17 +42,22 @@
                         <td>￥{{ '%.2f' % r.med_fee }}</td>
                         <td style="font-weight:900;">￥{{ '%.2f' % r.total_fee }}</td>
                         <td>
-                            {% if r.fee_status == '已支付' %}
+                            {% if r.visit_status == '已取消' %}
+                                <span class="badge badge--muted">已取消</span>
+                            {% elif r.fee_status == '已支付' %}
                                 <span class="badge badge--success">已支付</span>
                             {% else %}
                                 <span class="badge badge--warning">未支付</span>
                             {% endif %}
                         </td>
                         <td style="white-space:nowrap;">
-                            {% if r.fee_status != '已支付' %}
-                                <form method="POST" action="{{ url_for('cashier.patient_pay', reg_id=r.reg_id) }}" style="margin:0;">
-                                    <button class="btn btn--primary btn--sm" type="submit" onclick="return confirm('确认支付该笔费用？');">立即支付</button>
-                                </form>
+                            {% if r.visit_status == '已取消' %}
+                                <span class="muted">—</span>
+                            {% elif r.fee_status != '已支付' %}
+                                <button class="btn btn--primary btn--sm" type="button" 
+                                        onclick="showPayModal('{{ r.reg_id }}', '{{ '%.2f' % r.total_fee }}', '{{ r.doctor_name }}')">
+                                    立即支付
+                                </button>
                             {% else %}
                                 <span class="muted">—</span>
                             {% endif %}
@@ -66,4 +71,69 @@
             </table>
         </div>
     </div>
+
+    <!-- 支付确认模态框 -->
+    <div id="payModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div class="card" style="width:400px; padding:24px;">
+            <div class="page-title" style="margin-bottom:20px;">
+                <div>
+                    <h3 style="margin:0;">确认支付</h3>
+                    <div class="subtitle">请核对您的账单信息</div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom:20px; line-height:2;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="muted">订单编号：</span>
+                    <span id="modal_reg_id" class="mono"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="muted">就诊医生：</span>
+                    <span id="modal_doctor_name"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="muted">支付方式：</span>
+                    <span class="badge badge--info">在线支付</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:10px; border-top:1px solid var(--border); pt-10;">
+                    <span class="fw-bold" style="font-size:16px;">应付金额：</span>
+                    <span id="modal_amount" style="font-size:24px; font-weight:900; color:var(--primary);"></span>
+                </div>
+            </div>
+
+            <form id="payForm" method="POST" action="">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <button type="button" class="btn btn--ghost" onclick="closePayModal()">取消</button>
+                    <button type="submit" class="btn btn--primary">确认支付</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showPayModal(regId, amount, docName) {
+            document.getElementById('modal_reg_id').innerText = regId;
+            document.getElementById('modal_amount').innerText = '￥' + amount;
+            document.getElementById('modal_doctor_name').innerText = docName;
+            
+            // 设置表单提交地址
+            const form = document.getElementById('payForm');
+            form.action = "{{ url_for('cashier.patient_pay', reg_id=0) }}".replace('0', regId);
+            
+            // 显示弹窗
+            document.getElementById('payModal').style.display = 'flex';
+        }
+
+        function closePayModal() {
+            document.getElementById('payModal').style.display = 'none';
+        }
+
+        // 点击背景关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('payModal');
+            if (event.target == modal) {
+                closePayModal();
+            }
+        }
+    </script>
 {% endblock %}

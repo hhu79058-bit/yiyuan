@@ -60,14 +60,18 @@
                         <td>￥{{ '%.2f' % r.med_fee }}</td>
                         <td style="font-weight:900;">￥{{ '%.2f' % r.total_fee }}</td>
                         <td>
-                            {% if r.fee_status == '已支付' %}
+                            {% if r.visit_status == '已取消' %}
+                                <span class="badge badge--muted">已取消</span>
+                            {% elif r.fee_status == '已支付' %}
                                 <span class="badge badge--success">已支付</span>
                             {% else %}
                                 <span class="badge badge--warning">未支付</span>
                             {% endif %}
                         </td>
                         <td style="white-space:nowrap;">
-                            {% if r.fee_status != '已支付' %}
+                            {% if r.visit_status == '已取消' %}
+                                <span class="muted">—</span>
+                            {% elif r.fee_status != '已支付' %}
                                 <form method="POST" action="{{ url_for('cashier.cashier_pay', reg_id=r.reg_id) }}" style="margin:0;">
                                     <button class="btn btn--primary btn--sm" type="submit" onclick="return confirm('确认已收款？');">标记已支付</button>
                                 </form>

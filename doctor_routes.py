@@ -17,13 +17,16 @@ def dashboard():
                   SELECT r.reg_id, r.patient_id, p.name AS patient_name, p.gender, p.age,
                          p.medical_record_no, p.allergy, p.past_illness,
                          r.visit_status, r.queue_num, r.visit_date, r.shift, r.time_slot,
-                         r.called_time, r.call_times
+                         r.called_time, r.call_times,
+                         CASE
+                             WHEN (r.visit_date = CURDATE() OR (r.visit_date IS NULL AND DATE(r.reg_time) = CURDATE()))
+                             THEN 1 ELSE 0
+                         END AS is_today
                   FROM registration r
                            JOIN patient p ON r.patient_id = p.patient_id
                   WHERE r.doctor_id = %s
-                    AND (r.visit_date = CURDATE() OR (r.visit_date IS NULL AND DATE(r.reg_time) = CURDATE()))
                     AND r.visit_status IN ('未就诊', '就诊中')
-                  ORDER BY r.time_slot, r.queue_num ASC
+                  ORDER BY r.visit_date DESC, r.time_slot, r.queue_num ASC
                   """
             cursor.execute(sql, (session['user_id'],))
             patients = cursor.fetchall()
@@ -46,10 +49,21 @@ def call_patient(reg_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT doctor_id FROM registration WHERE reg_id=%s", (reg_id,))
+            cursor.execute("""
+                SELECT doctor_id,
+                       CASE
+                           WHEN (visit_date = CURDATE() OR (visit_date IS NULL AND DATE(reg_time) = CURDATE()))
+                           THEN 1 ELSE 0
+                       END AS is_today
+                FROM registration
+                WHERE reg_id=%s
+            """, (reg_id,))
             row = cursor.fetchone()
             if not row or row['doctor_id'] != session.get('user_id'):
                 flash("无权叫号该患者", 'error')
+                return redirect(url_for('doctor.dashboard'))
+            if not row['is_today']:
+                flash("非今日挂号不可叫号", 'error')
                 return redirect(url_for('doctor.dashboard'))
 
             cursor.execute("""
@@ -128,12 +142,19 @@ def start_consult(reg_id):
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT visit_status, called_time, doctor_id
+                SELECT visit_status, called_time, doctor_id,
+                       CASE
+                           WHEN (visit_date = CURDATE() OR (visit_date IS NULL AND DATE(reg_time) = CURDATE()))
+                           THEN 1 ELSE 0
+                       END AS is_today
                 FROM registration WHERE reg_id=%s
             """, (reg_id,))
             reg = cursor.fetchone()
             if not reg or reg['doctor_id'] != session.get('user_id'):
                 flash("无权接诊该患者", 'error')
+                return redirect(url_for('doctor.dashboard'))
+            if not reg['is_today']:
+                flash("非今日挂号不可接诊", 'error')
                 return redirect(url_for('doctor.dashboard'))
             if reg['visit_status'] == '已就诊':
                 flash("该患者已就诊完成", 'info')
@@ -171,6 +192,19 @@ def consultation_page(reg_id):
             if not patient or patient['visit_status'] not in ('就诊中',):
                 flash("当前挂号不在可问诊状态", 'error')
                 conn.close()
+                return redirect(url_for('doctor.dashboard'))
+            cursor.execute("""
+                SELECT
+                    CASE
+                        WHEN (visit_date = CURDATE() OR (visit_date IS NULL AND DATE(reg_time) = CURDATE()))
+                        THEN 1 ELSE 0
+                    END AS is_today
+                FROM registration
+                WHERE reg_id=%s
+            """, (reg_id,))
+            date_check = cursor.fetchone()
+            if not date_check or not date_check['is_today']:
+                flash("非今日挂号不可问诊", 'error')
                 return redirect(url_for('doctor.dashboard'))
 
             cursor.execute("SELECT * FROM medicine WHERE stock > 0")
@@ -256,3 +290,74 @@ def admin_home():
     if not require_admin():
         return redirect(url_for('auth.login'))
     return render_template('admin_home.html')
+
+
+@doctor_bp.route('/admin/doctors', methods=['GET', 'POST'])
+def doctor_manage():
+    if not require_admin():
+        return redirect(url_for('auth.login'))
+
+    conn = get_db_connection()
+    if request.method == 'POST':
+        # 录入新医生逻辑
+        name = request.form.get('name')
+        title = request.form.get('title')
+        reg_fee = request.form.get('reg_fee')
+        dept_id = request.form.get('dept_id')
+        phone = request.form.get('phone')
+        password = request.form.get('password')
+
+        try:
+            with conn.cursor() as cursor:
+                # 检查手机号是否重复
+                cursor.execute("SELECT 1 FROM doctor WHERE phone=%s", (phone,))
+                if cursor.fetchone():
+                    flash("该手机号已绑定其他医生，请更换", "error")
+                else:
+                    cursor.execute("""
+                        INSERT INTO doctor (name, title, reg_fee, dept_id, phone, password, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, '正常')
+                    """, (name, title, reg_fee, dept_id, phone, password))
+                    conn.commit()
+                    flash(f"医生 {name} 录入成功！", "success")
+        except Exception as e:
+            conn.rollback()
+            flash(f"录入失败: {e}", "error")
+
+    # 获取医生列表和科室列表用于展示和下拉选框
+    doctors = []
+    departments = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT d.*, dept.dept_name 
+                FROM doctor d 
+                JOIN department dept ON d.dept_id = dept.dept_id
+                ORDER BY dept.dept_name, d.name
+            """)
+            doctors = cursor.fetchall()
+            cursor.execute("SELECT * FROM department")
+            departments = cursor.fetchall()
+    finally:
+        conn.close()
+
+    return render_template('doctor_manage.html', doctors=doctors, departments=departments)
+
+
+@doctor_bp.route('/admin/doctor/delete/<int:doctor_id>')
+def delete_doctor(doctor_id):
+    if not require_admin():
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # 这里简单处理：改为停诊状态或直接删除（如果有外键约束建议改状态）
+            cursor.execute("UPDATE doctor SET status='停诊' WHERE doctor_id=%s", (doctor_id,))
+            conn.commit()
+            flash("该医生已设为停诊状态", "success")
+    except Exception as e:
+        flash(f"操作失败: {e}", "error")
+    finally:
+        conn.close()
+    return redirect(url_for('doctor.doctor_manage'))

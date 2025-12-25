@@ -12,6 +12,22 @@
 
     <div class="grid grid-2" style="gap:16px; display: grid; grid-template-columns: 1fr 1fr; align-items: stretch;">
 
+        <!-- 医生管理入口 (补全) -->
+        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0;">
+            <div style="flex: 1;">
+                <div class="section__head">
+                    <div>
+                        <h3>医生管理</h3>
+                        <div class="subtitle">医生人员档案与状态维护</div>
+                    </div>
+                </div>
+                <p class="muted">录入新医生、分配科室并管理其在职状态。</p>
+            </div>
+            <div style="margin-top:12px;">
+                <a class="btn btn--primary" href="{{ url_for('doctor.doctor_manage') }}">进入医生管理</a>
+            </div>
+        </div>
+
         <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0;">
             <div style="flex: 1;">
                 <div class="section__head">
@@ -27,7 +43,7 @@
             </div>
         </div>
 
-        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0;">
+        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0; margin-top: 16px;">
             <div style="flex: 1;">
                 <div class="section__head">
                     <div>
@@ -46,21 +62,6 @@
             <div style="flex: 1;">
                 <div class="section__head">
                     <div>
-                        <h3>统计报表</h3>
-                        <div class="subtitle">当日挂号 / 收费 / 发药概览</div>
-                    </div>
-                </div>
-                <p class="muted">快速查看业务汇总与科室/医生分布。</p>
-            </div>
-            <div style="margin-top:12px;">
-                <a class="btn btn--primary" href="{{ url_for('stats.daily_stats') }}">查看报表</a>
-            </div>
-        </div>
-
-        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0; margin-top: 16px;">
-            <div style="flex: 1;">
-                <div class="section__head">
-                    <div>
                         <h3>收银台</h3>
                         <div class="subtitle">收费、支付状态管理</div>
                     </div>
@@ -69,6 +70,21 @@
             </div>
             <div style="margin-top:12px;">
                 <a class="btn btn--primary" href="{{ url_for('cashier.cashier_page') }}">进入收银台</a>
+            </div>
+        </div>
+
+        <div class="card section" style="display: flex; flex-direction: column; height: 100%; margin: 0; margin-top: 16px;">
+            <div style="flex: 1;">
+                <div class="section__head">
+                    <div>
+                        <h3>统计报表</h3>
+                        <div class="subtitle">当日挂号 / 收费 / 发药概览</div>
+                    </div>
+                </div>
+                <p class="muted">快速查看业务汇总与科室/医生分布。</p>
+            </div>
+            <div style="margin-top:12px;">
+                <a class="btn btn--primary" href="{{ url_for('stats.daily_stats') }}">查看报表</a>
             </div>
         </div>
     </div>

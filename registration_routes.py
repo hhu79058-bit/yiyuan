@@ -7,6 +7,7 @@ from db import (
     generate_medical_record_no,
     update_schedule_booked,
     column_exists,
+    log_operation,
 )
 from utils import require_admin
 
@@ -322,19 +323,61 @@ def registration_cancel(reg_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT visit_status, schedule_id, visit_date FROM registration WHERE reg_id=%s", (reg_id,))
+            cursor.execute("""
+                SELECT r.visit_status, r.schedule_id, r.visit_date, p.name as patient_name
+                FROM registration r
+                JOIN patient p ON r.patient_id = p.patient_id
+                WHERE r.reg_id=%s
+            """, (reg_id,))
             reg = cursor.fetchone()
             if not reg:
                 flash("挂号记录不存在", 'error')
                 return redirect(url_for('registration.registration_manage'))
+            
             visit_date = reg['visit_date']
             if reg['visit_status'] == '已取消':
-                flash("该记录已取消", 'info')
+                flash("该记录已取消，无需重复操作", 'info')
+                return redirect(url_for('registration.registration_manage', date=visit_date))
+            
+            if reg['visit_status'] in ('已就诊', '就诊中'):
+                flash(f"患者当前状态为【{reg['visit_status']}】，不可退号", 'error')
                 return redirect(url_for('registration.registration_manage', date=visit_date))
 
-            cursor.execute("UPDATE registration SET visit_status='已取消' WHERE reg_id=%s", (reg_id,))
-        update_schedule_booked(conn, reg['schedule_id'], -1)
-        flash("已退号", 'success')
+            # 检查是否已产生处方且未作废
+            cursor.execute("SELECT COUNT(*) as cnt FROM prescription WHERE reg_id=%s", (reg_id,))
+            presc_count = cursor.fetchone()['cnt']
+            if presc_count > 0:
+                flash("该挂号已产生处方记录，请先联系医生或药房处理处方后再退号", 'error')
+                return redirect(url_for('registration.registration_manage', date=visit_date))
+
+            # 1. 更新订单状态
+            if reg['visit_status'] == '未就诊':
+                # 如果已支付，则标记为已退款（或由财务流程处理，这里演示标记为已退款）
+                cursor.execute("""
+                    UPDATE registration 
+                    SET visit_status='已取消', 
+                        fee_status = CASE WHEN fee_status='已支付' THEN '已退款' ELSE fee_status END
+                    WHERE reg_id=%s
+                """, (reg_id,))
+            else:
+                cursor.execute("UPDATE registration SET visit_status='已取消' WHERE reg_id=%s", (reg_id,))
+            
+            # 2. 释放号源
+            update_schedule_booked(conn, reg['schedule_id'], -1)
+            
+            # 3. 记录操作日志
+            log_operation(
+                conn,
+                operator_id=session.get('user_id'),
+                operator_name=session.get('user_name'),
+                operator_role=session.get('role'),
+                op_type='退号',
+                target_id=reg_id,
+                detail=f"管理员退号：患者 {reg['patient_name']}，挂号ID {reg_id}。原状态：{reg['visit_status']}"
+            )
+            
+        conn.commit()
+        flash("已成功退号，号源已释放", 'success')
     except Exception as e:
         conn.rollback()
         flash(f"操作失败：{e}", 'error')
@@ -352,7 +395,12 @@ def registration_restore(reg_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT visit_status, schedule_id, visit_date FROM registration WHERE reg_id=%s", (reg_id,))
+            cursor.execute("""
+                SELECT r.visit_status, r.schedule_id, r.visit_date, p.name as patient_name
+                FROM registration r
+                JOIN patient p ON r.patient_id = p.patient_id
+                WHERE r.reg_id=%s
+            """, (reg_id,))
             reg = cursor.fetchone()
             if not reg:
                 flash("挂号记录不存在", 'error')
@@ -363,6 +411,18 @@ def registration_restore(reg_id):
                 return redirect(url_for('registration.registration_manage', date=visit_date))
 
             cursor.execute("UPDATE registration SET visit_status='未就诊' WHERE reg_id=%s", (reg_id,))
+            
+            # 记录日志
+            log_operation(
+                conn,
+                operator_id=session.get('user_id'),
+                operator_name=session.get('user_name'),
+                operator_role=session.get('role'),
+                op_type='恢复挂号',
+                target_id=reg_id,
+                detail=f"管理员恢复挂号：患者 {reg['patient_name']}，挂号ID {reg_id}"
+            )
+            
         update_schedule_booked(conn, reg['schedule_id'], 1)
         flash("已恢复挂号", 'success')
     except Exception as e:

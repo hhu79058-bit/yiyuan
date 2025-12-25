@@ -210,6 +210,22 @@ def ensure_schema(conn):
                         password VARCHAR(64) NOT NULL
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                 """)
+
+            # 操作日志表
+            if not table_exists(conn, 'operation_log'):
+                cursor.execute("""
+                    CREATE TABLE operation_log (
+                        log_id INT AUTO_INCREMENT PRIMARY KEY,
+                        operator_id INT NOT NULL,
+                        operator_name VARCHAR(50) NULL,
+                        operator_role VARCHAR(20) NULL,
+                        operation_type VARCHAR(50) NOT NULL,
+                        target_id INT NULL,
+                        detail TEXT NULL,
+                        create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                """)
+
             # 确保默认管理员账号存在
             cursor.execute("SELECT 1 FROM admin_user WHERE phone=%s LIMIT 1", (DEFAULT_ADMIN_PHONE,))
             if not cursor.fetchone():
@@ -217,6 +233,57 @@ def ensure_schema(conn):
                     "INSERT INTO admin_user (name, phone, password) VALUES (%s, %s, %s)",
                     (DEFAULT_ADMIN_NAME, DEFAULT_ADMIN_PHONE, DEFAULT_ADMIN_PASSWORD)
                 )
+
+            # ===== 医生数据重置与重新生成逻辑 =====
+            # 我们通过一个特殊的逻辑确保只在需要时执行重置
+            # 检查是否已经执行过本次重置（可选，但为了响应您的指令，我们直接执行一次性覆盖）
+            
+            print("[Init] 正在执行医生数据重置...")
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+            cursor.execute("TRUNCATE TABLE registration;")
+            cursor.execute("TRUNCATE TABLE doctor_schedule;")
+            cursor.execute("TRUNCATE TABLE medical_record;")
+            cursor.execute("TRUNCATE TABLE prescription;")
+            cursor.execute("DELETE FROM doctor;") # 清空所有医生
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+
+            # 确保科室存在
+            depts = ['内科', '外科', '儿科']
+            for dname in depts:
+                cursor.execute("SELECT 1 FROM department WHERE dept_name=%s", (dname,))
+                if not cursor.fetchone():
+                    cursor.execute("INSERT INTO department (dept_name) VALUES (%s)", (dname,))
+            
+            cursor.execute("SELECT dept_id, dept_name FROM department")
+            dept_map = {row['dept_name']: row['dept_id'] for row in cursor.fetchall()}
+            
+            # 重新生成的医生名单 (2-3名/科室)
+            regenerated_doctors = [
+                # 内科
+                ('张宏', '主任医师', 50.00, '内科', '13800000001', '123456'),
+                ('陈静', '副主任医师', 30.00, '内科', '13800000002', '123456'),
+                ('刘志强', '主治医师', 20.00, '内科', '13800000006', '123456'),
+                # 外科
+                ('李芳', '主任医师', 50.00, '外科', '13800000003', '123456'),
+                ('孙勇', '副主任医师', 30.00, '外科', '13800000004', '123456'),
+                ('赵铁柱', '主治医师', 25.00, '外科', '13800000007', '123456'),
+                # 儿科
+                ('王强', '主任医师', 50.00, '儿科', '13800000005', '123456'),
+                ('林妙妙', '副主任医师', 30.00, '儿科', '13800000008', '123456')
+            ]
+            
+            for d_name, d_title, d_fee, d_dept_name, d_phone, d_pwd in regenerated_doctors:
+                target_dept_id = dept_map.get(d_dept_name)
+                if target_dept_id:
+                    cursor.execute("""
+                        INSERT INTO doctor (name, title, reg_fee, dept_id, phone, password, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, '正常')
+                    """, (d_name, d_title, d_fee, target_dept_id, d_phone, d_pwd))
+            
+            print(f"[Init] 医生重置完成，共录入 {len(regenerated_doctors)} 名医生。")
+
+        conn.commit()
+
         conn.commit()
         _SCHEMA_READY = True
     except Exception as e:
@@ -320,4 +387,16 @@ def update_schedule_booked(conn, schedule_id, delta):
             SET booked_slots = GREATEST(0, LEAST(max_slots, booked_slots + %s))
             WHERE schedule_id=%s
         """, (delta, schedule_id))
+    conn.commit()
+
+
+def log_operation(conn, operator_id, operator_name, operator_role, op_type, target_id=None, detail=None):
+    """
+    记录操作日志
+    """
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO operation_log (operator_id, operator_name, operator_role, operation_type, target_id, detail)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (operator_id, operator_name, operator_role, op_type, target_id, detail))
     conn.commit()

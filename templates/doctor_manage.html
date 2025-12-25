@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="bi bi-people-fill text-primary"></i> 医生人员管理</h2>
+        <p class="text-muted">管理系统内的医生信息、科室分配及账户状态。</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addDoctorModal">
+            <i class="bi bi-person-plus-fill me-1"></i> 录入新医生
+        </button>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">姓名</th>
+                        <th>所属科室</th>
+                        <th>职称</th>
+                        <th>挂号费</th>
+                        <th>手机号 (登录账号)</th>
+                        <th>状态</th>
+                        <th class="text-end pe-4">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in doctors %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ doc.name }}</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-primary border border-primary-subtle">{{ doc.dept_name }}</span>
+                        </td>
+                        <td>{{ doc.title }}</td>
+                        <td class="fw-bold text-success">¥{{ "%.2f"|format(doc.reg_fee) }}</td>
+                        <td><code>{{ doc.phone }}</code></td>
+                        <td>
+                            {% if doc.status == '正常' %}
+                                <span class="badge bg-success">在职</span>
+                            {% else %}
+                                <span class="badge bg-danger">{{ doc.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            {% if doc.status == '正常' %}
+                            <a href="{{ url_for('doctor.delete_doctor', doctor_id=doc.doctor_id) }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('确定要将该医生设为停诊吗？')">
+                                <i class="bi bi-pause-circle"></i> 停诊
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 录入医生模态框 -->
+<div class="modal fade" id="addDoctorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold">录入新医生信息</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">医生姓名</label>
+                            <input type="text" name="name" class="form-control" placeholder="如：王大夫" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">职称</label>
+                            <select name="title" class="form-select" required>
+                                <option value="主任医师">主任医师</option>
+                                <option value="副主任医师">副主任医师</option>
+                                <option value="主治医师">主治医师</option>
+                                <option value="住院医师">住院医师</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">挂号费用 (元)</label>
+                            <input type="number" step="0.01" name="reg_fee" class="form-control" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">所属科室</label>
+                            <select name="dept_id" class="form-select" required>
+                                {% for dept in departments %}
+                                <option value="{{ dept.dept_id }}">{{ dept.dept_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted">手机号 (登录账号)</label>
+                            <input type="text" name="phone" class="form-control" placeholder="138XXXXXXXX" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted">初始密码</label>
+                            <input type="password" name="password" class="form-control" value="123456" required>
+                            <div class="form-text small">默认密码为 123456</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 p-4">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary px-4">确认录入</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 from datetime import date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from db import get_db_connection, column_exists
+from db import get_db_connection, column_exists, log_operation
 from utils import require_admin
 
 payment_bp = Blueprint('cashier', __name__)
@@ -68,12 +68,27 @@ def cashier_pay(reg_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            # 允许重复提交时保持已支付状态
+            cursor.execute("SELECT visit_status FROM registration WHERE reg_id=%s", (reg_id,))
+            reg = cursor.fetchone()
+            if not reg or reg['visit_status'] == '已取消':
+                flash("已取消挂号不可支付", 'error')
+                return redirect(url_for('cashier.cashier_page'))
             cursor.execute("""
                 UPDATE registration
                 SET fee_status='已支付', paid_time=NOW()
                 WHERE reg_id=%s
             """, (reg_id,))
+
+            # 记录日志
+            log_operation(
+                conn,
+                operator_id=session.get('user_id'),
+                operator_name=session.get('user_name'),
+                operator_role=session.get('role'),
+                op_type='支付',
+                target_id=reg_id,
+                detail=f"管理员确认支付：挂号ID {reg_id}"
+            )
         conn.commit()
         flash("支付状态已更新为已支付", 'success')
     except Exception as e:
@@ -98,7 +113,7 @@ def patient_payments():
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT r.reg_id, r.reg_time, r.visit_date, r.shift, r.fee_status,
+                SELECT r.reg_id, r.reg_time, r.visit_date, r.shift, r.fee_status, r.visit_status,
                        r.reg_fee, IFNULL(r.check_fee, 0) AS check_fee,
                        d.name AS doctor_name,
                        IFNULL((SELECT SUM(pr.total_amount) FROM prescription pr WHERE pr.reg_id = r.reg_id), 0) AS med_fee
@@ -127,10 +142,13 @@ def patient_pay(reg_id):
     try:
         with conn.cursor() as cursor:
             # 确认该挂号属于当前患者
-            cursor.execute("SELECT patient_id FROM registration WHERE reg_id=%s", (reg_id,))
+            cursor.execute("SELECT patient_id, visit_status FROM registration WHERE reg_id=%s", (reg_id,))
             reg = cursor.fetchone()
             if not reg or reg['patient_id'] != patient_id:
                 flash("无权操作该订单", 'error')
+                return redirect(url_for('cashier.patient_payments'))
+            if reg.get('visit_status') == '已取消':
+                flash("已取消挂号不可支付", 'error')
                 return redirect(url_for('cashier.patient_payments'))
 
             cursor.execute("""
